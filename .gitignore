@@ -1,0 +1,41 @@
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java / Maven
+backend/target/
+backend/data/
+backend/*-check.csv
+backend/data/warehouse-attachments/
+backend/.mvn/wrapper/maven-wrapper.jar
+.m2/
+
+# Local account notes may contain sign-in details
+app/软件说明.md
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.mobile-https/
+frontend/public/mobile-dev-root-ca.crt
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Environment files
+.env
+*.local
+
+# Runtime data
+deploy/data/
+deploy/minio/
+deploy/mysql/
+deploy/redis/

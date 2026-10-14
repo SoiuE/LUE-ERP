@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: optional:file:./.env[.properties]
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 52MB
+  application:
+    name: lue-erp-backend
+  datasource:
+    url: ${LUE_DB_URL:jdbc:mysql://localhost:3306/lue_erp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${LUE_DB_USERNAME:lue_erp}
+    password: ${LUE_DB_PASSWORD:lue_erp_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${LUE_REDIS_HOST:localhost}
+      port: ${LUE_REDIS_PORT:6379}
+      password: ${LUE_REDIS_PASSWORD:}
+
+mybatis:
+  mapper-locations: classpath*:mappers/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: info
+    com.lue.erp: debug
+
+lue:
+  auth:
+    secret: ${LUE_AUTH_SECRET:local-development-secret-change-before-deploy-32chars}
+    token-hours: ${LUE_AUTH_TOKEN_HOURS:12}
+  bootstrap:
+    admin-username: ${LUE_ADMIN_USERNAME:admin}
+    admin-password: ${LUE_ADMIN_PASSWORD:ChangeMe123!}

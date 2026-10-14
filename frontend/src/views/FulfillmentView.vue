@@ -1,0 +1,109 @@
+<template>
+  <div class="page-stack fulfillment-page">
+    <div class="page-heading"><div><div class="eyebrow">PLATFORM FULFILLMENT</div><h1>本地发货履约</h1><p>导入平台已完成的组包与预约数据，ERP 负责本地拣货、打包和交接。</p></div></div>
+    <el-alert type="info" :closable="false" show-icon title="WAREHOUSE 客户销售汇总仅用于销售和利润统计；请导入速卖通独立创建的仓发入平台仓备货单来创建本地备货任务。" />
+    <el-card shadow="never">
+      <template #header><div class="section-heading"><div><h2>平台表格导入</h2><p>直接上传速卖通平台导出的 .xlsx，ERP 自动解析和校验</p></div><el-button @click="loadDocuments">刷新履约单</el-button></div></template>
+      <div class="fulfillment-import-row">
+        <el-select v-model="importType" style="width:260px"><el-option label="JIT 客户订单组包/预约" value="jit"/><el-option label="仓发入平台仓备货单组包/预约" value="warehouse"/></el-select>
+        <el-upload :key="fileKey" :auto-upload="false" :limit="1" accept=".xlsx" :on-change="fileChanged" :on-remove="fileRemoved"><el-button>选择平台导出表格</el-button></el-upload>
+        <el-button type="primary" :loading="previewing" :disabled="!file" @click="previewImport">上传并校验</el-button>
+        <el-button :loading="downloadingTemplate==='jit'" @click="downloadTemplate('jit')">下载 JIT 模板</el-button>
+        <el-button :loading="downloadingTemplate==='warehouse'" @click="downloadTemplate('warehouse')">下载仓发备货模板</el-button>
+        <span class="form-field-hint">请先选择正确的单据类型；最多 20,000 行，原始文件和行数据会留存。</span>
+      </div>
+      <el-card v-if="batch" shadow="never" class="fulfillment-batch">
+        <template #header><div class="section-heading"><div><h3>批次 {{ batch.batchNo }}</h3><p>{{ batch.originalFilename }} · 共 {{ batch.totalRows }} 行 · SKU 未匹配 {{ batch.unmatchedRows }} · 字段错误 {{ batch.errorRows }}</p></div><div><el-tag v-if="batch.alreadyImported" type="warning">该文件已处理</el-tag><el-button v-else-if="batch.status==='PREVIEWED'" type="primary" :loading="committing" @click="commitImport">导入可处理记录</el-button><el-tag v-else type="success">{{ batch.status }}</el-tag></div></div></template>
+        <el-table :data="rows" v-loading="loadingRows" max-height="300" size="small"><el-table-column prop="rowNumber" label="源行" width="75"/><el-table-column prop="rowStatus" label="结果" width="115"/><el-table-column label="平台单据" min-width="150"><template #default="{row}">{{ row.normalized?.source_document_id || '—' }}</template></el-table-column><el-table-column label="平台 SKU" min-width="140"><template #default="{row}">{{ row.normalized?.platform_sku || '—' }}</template></el-table-column><el-table-column label="数量" width="90"><template #default="{row}">{{ row.normalized?.quantity || '—' }}</template></el-table-column><el-table-column label="错误明细" min-width="240"><template #default="{row}">{{ row.errors.join('；') || '—' }}</template></el-table-column></el-table>
+      </el-card>
+    </el-card>
+
+    <el-card shadow="never">
+      <template #header><div class="section-heading"><div><h2>缺货与采购关联</h2><p>关联同 SKU 的采购明细；采购入库后可继续拣货</p></div><el-button @click="loadShortages">刷新缺货</el-button></div></template>
+      <el-table :data="shortages" v-loading="loadingShortages" stripe>
+        <el-table-column prop="documentNo" label="履约单" min-width="170"/><el-table-column prop="sourceDocumentId" label="平台来源单" min-width="150"/><el-table-column label="SKU"><template #default="{row}">{{ row.internalSku }} · {{ row.productName }}</template></el-table-column><el-table-column prop="shortageQty" label="缺货数量" width="100"/><el-table-column prop="reason" label="缺货原因" min-width="150"/>
+        <el-table-column label="关联采购单" min-width="300"><template #default="{row}"><div v-if="row.status==='OPEN'" class="po-link-row"><el-select v-model="poSelections[row.id]" filterable placeholder="选择同 SKU 的未完成采购明细"><el-option v-for="po in poOptions.filter((x:any)=>x.skuId===row.skuId)" :key="po.purchaseOrderItemId" :label="`${po.poNo} · 已收 ${po.receivedQty}/${po.orderedQty}`" :value="po.purchaseOrderItemId"/></el-select><el-button type="primary" @click="linkPurchase(row)">关联</el-button></div><span v-else>{{ row.poNo || (row.status==='RECEIVED'?'已入库，可继续拣货':row.status) }}</span></template></el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-card shadow="never">
+      <template #header><div class="section-heading"><div><h2>履约单</h2><p>组包预约数据与本地处理进度分开保存</p></div><div class="fulfillment-filters"><el-select v-model="docType" clearable placeholder="全部单据类型" @change="loadDocuments"><el-option label="JIT 客户订单" value="JIT_ORDER"/><el-option label="仓发入平台仓备货" value="PLATFORM_WAREHOUSE_STOCKING"/></el-select><el-select v-model="docStatus" clearable placeholder="全部本地状态" @change="loadDocuments"><el-option v-for="s in statuses" :key="s" :label="statusName(s)" :value="s"/></el-select><el-input v-model="query" clearable placeholder="单号、预约号、平台 SKU" @keyup.enter="loadDocuments"/><el-button @click="loadDocuments">搜索</el-button></div></div></template>
+      <el-table :data="documents" v-loading="loadingDocs" stripe>
+        <el-table-column prop="documentNo" label="ERP 履约单号" min-width="190"/>
+        <el-table-column label="来源平台单号" min-width="170"><template #default="{row}">{{ row.sourceDocumentId }}<small class="subline">{{ row.shopIdentifier }}</small></template></el-table-column>
+        <el-table-column label="类型" width="170"><template #default="{row}">{{ typeName(row.documentType) }}</template></el-table-column>
+        <el-table-column prop="groupBatchId" label="组包批次" min-width="140"/>
+        <el-table-column label="预约" min-width="170"><template #default="{row}">{{ row.appointmentNo || '—' }}<small class="subline">{{ formatDate(row.pickupStart) }}</small></template></el-table-column>
+        <el-table-column prop="warehouseName" label="发货仓" width="120"/>
+        <el-table-column label="数量（已发）" width="120"><template #default="{row}">{{ row.orderedQty }}（{{ row.shippedQty }}）</template></el-table-column>
+        <el-table-column label="本地状态" width="145"><template #default="{row}"><el-tag :type="statusType(row.localStatus)">{{ statusName(row.localStatus) }}</el-tag><small v-if="isUrgent(row.pickupStart)" class="urgent-label">预约临期</small></template></el-table-column>
+        <el-table-column label="操作" width="150" fixed="right"><template #default="{row}"><el-button link type="primary" @click="openDocument(row)">处理 / 详情</el-button></template></el-table-column>
+      </el-table>
+      <div class="pagination-wrap"><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next" @change="loadDocuments"/></div>
+    </el-card>
+
+    <el-drawer v-model="detailVisible" size="min(900px, 96vw)" :title="active?.documentNo || '履约单详情'">
+      <template v-if="active">
+        <div class="fulfillment-summary"><span>来源单号：<b>{{ active.sourceDocumentId }}</b></span><span>店铺/账号：<b>{{ active.shopIdentifier }}</b></span><span>类型：<b>{{ typeName(active.documentType) }}</b></span><span>发货仓：<b>{{ active.warehouseName }}</b></span><span>预约：<b>{{ active.appointmentNo || '—' }} {{ formatDate(active.pickupStart) }}</b></span></div>
+        <h3>订单/备货明细</h3>
+        <el-table :data="active.items" size="small"><el-table-column prop="platformSku" label="平台 SKU"/><el-table-column prop="internalSku" label="内部 SKU"/><el-table-column prop="orderedQty" label="应发" width="95"/><el-table-column prop="shippedQty" label="已发" width="95"/><el-table-column label="剩余" width="95"><template #default="{row}">{{ Number(row.orderedQty)-Number(row.shippedQty) }}</template></el-table-column></el-table>
+        <h3>包裹 / 标签 / 预约快照</h3><el-table :data="active.packages" size="small"><el-table-column prop="groupBatchId" label="组包批次"/><el-table-column prop="packageNo" label="包裹/箱号"/><el-table-column prop="labelNo" label="标签号"/><el-table-column prop="appointmentNo" label="预约号"/><el-table-column label="取件时间"><template #default="{row}">{{ formatDate(row.pickupStart) }} - {{ formatDate(row.pickupEnd) }}</template></el-table-column></el-table>
+        <h3>本地发货批次</h3><el-table :data="active.dispatches" size="small"><el-table-column prop="dispatchNo" label="批次单号"/><el-table-column prop="dispatchSequence" label="序号" width="70"/><el-table-column label="状态" width="120"><template #default="{row}">{{ dispatchStatusName(row.status) }}</template></el-table-column><el-table-column prop="handoffReference" label="交接凭证"/><el-table-column label="操作" width="100"><template #default="{row}"><el-button v-if="row.status==='PICKING'||row.status==='PICKED'" link type="primary" @click="openDispatch(row.id)">拣货/交接</el-button></template></el-table-column></el-table>
+        <div class="drawer-actions"><el-button type="primary" :disabled="!canDispatch" @click="createDispatch">新建分批拣货任务</el-button></div>
+      </template>
+    </el-drawer>
+
+    <el-dialog v-model="dispatchVisible" title="扫码拣货与交接" width="min(760px,96vw)">
+      <template v-if="activeDispatch">
+        <el-alert type="info" :closable="false" :title="`发货批次 ${activeDispatch.dispatchNo} · 扫描条码后输入拣货数量`"/>
+        <el-table :data="activeDispatch.items" class="dispatch-lines"><el-table-column prop="internalSku" label="内部 SKU"/><el-table-column prop="platformSku" label="平台 SKU"/><el-table-column label="拣货 / 计划"><template #default="{row}">{{ row.pickedQty }} / {{ row.plannedQty }}</template></el-table-column><el-table-column label="扫码操作" min-width="260"><template #default="{row}"><div class="scan-inline"><el-input v-model="scanBarcode" placeholder="扫描或输入 SKU 条码"/><el-input-number v-model="scanQty" :min="0.0001" :precision="4" :step="1"/><el-button size="small" type="primary" @click="pickItem(row)">记拣货</el-button></div></template></el-table-column><el-table-column label="缺货" width="90"><template #default="{row}"><el-button link type="warning" @click="markShortage(row)">登记</el-button></template></el-table-column></el-table>
+        <el-form label-position="top"><el-form-item label="交接凭证 / 运单号"><el-input v-model="handoffReference" placeholder="填写实际交接凭证或物流单号"/></el-form-item><el-form-item label="实发数量说明"><span class="form-field-hint">默认按本批已拣数量实发；未拣足的数量可留到下一批。确认交接后生成库存及包材流水。</span></el-form-item></el-form>
+      </template>
+      <template #footer><el-button @click="dispatchVisible=false">关闭</el-button><el-button type="primary" :loading="working" @click="handoff">确认交接发货</el-button></template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { api } from '../api'
+
+type Batch={id:number;batchNo:string;documentType:string;originalFilename:string;status:string;totalRows:number;createdRows:number;updatedRows:number;duplicateRows:number;unmatchedRows:number;errorRows:number;alreadyImported?:boolean;previewTotal?:number}
+type ImportRow={rowNumber:number;rowStatus:string;normalized:any;errors:string[]}
+type FulfillmentDoc={id:number;documentNo:string;documentType:string;shopIdentifier:string;sourceDocumentId:string;groupBatchId:string;targetPlatformWarehouse:string;localStatus:string;appointmentNo:string;pickupStart:string;pickupEnd:string;warehouseName:string;orderedQty:number;shippedQty:number;items:any[];packages:any[];dispatches:any[]}
+type Shortage={id:number;itemId:number;skuId:number;internalSku:string;productName:string;documentNo:string;sourceDocumentId:string;shortageQty:number;reason:string;status:string;poNo?:string}
+const importType=ref<'jit'|'warehouse'>('jit'),file=ref<File>(),fileKey=ref(0),previewing=ref(false),committing=ref(false),batch=ref<Batch>(),rows=ref<ImportRow[]>([]),loadingRows=ref(false)
+const downloadingTemplate=ref<'jit'|'warehouse'|''>('')
+const docType=ref(''),docStatus=ref(''),query=ref(''),page=ref(1),pageSize=ref(20),total=ref(0),documents=ref<FulfillmentDoc[]>([]),loadingDocs=ref(false)
+const shortages=ref<Shortage[]>([]),loadingShortages=ref(false),poOptions=ref<any[]>([]),poSelections=ref<Record<number,number>>({})
+const detailVisible=ref(false),active=ref<FulfillmentDoc>(),dispatchVisible=ref(false),activeDispatch=ref<any>(),working=ref(false),scanBarcode=ref(''),scanQty=ref<number>(1),handoffReference=ref('')
+const statuses=['SKU_UNMATCHED','READY_TO_PICK','PICKING','SHORTAGE','PARTIALLY_SHIPPED','SHIPPED','NEEDS_REVIEW']
+const canDispatch=computed(()=>!!active.value&&active.value.items?.some(i=>Number(i.orderedQty)>Number(i.shippedQty)&&i.skuId))
+function fileChanged(value:{raw?:File}){file.value=value.raw}function fileRemoved(){file.value=undefined}
+function parse(value:any){if(typeof value!=='string')return value;try{return JSON.parse(value)}catch{return value}}
+function formatDate(value?:string){if(!value)return'—';const d=new Date(value);return Number.isNaN(d.getTime())?value:String(d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))}
+function typeName(value:string){return value==='JIT_ORDER'?'JIT 客户订单':'仓发入平台仓备货'}
+function statusName(value:string){return ({SKU_UNMATCHED:'SKU 未匹配',READY_TO_PICK:'待拣货',PICKING:'拣货中',SHORTAGE:'缺货待处理',PARTIALLY_SHIPPED:'部分已发货',SHIPPED:'已发货',CANCELLED:'已取消',NEEDS_REVIEW:'待人工核对'} as Record<string,string>)[value]||value}
+function dispatchStatusName(value:string){return ({PICKING:'拣货中',PICKED:'已拣货',HANDED_OFF:'已交接',CANCELLED:'已取消'} as Record<string,string>)[value]||value}
+function statusType(value:string){return value==='SHIPPED'?'success':value==='SHORTAGE'||value==='SKU_UNMATCHED'||value==='NEEDS_REVIEW'?'danger':value==='PARTIALLY_SHIPPED'?'warning':'info'}
+function isUrgent(value?:string){if(!value)return false;const remain=new Date(value).getTime()-Date.now();return remain>=0&&remain<24*60*60*1000}
+async function previewImport(){if(!file.value)return;const form=new FormData();form.append('file',file.value);previewing.value=true;try{batch.value=await api<Batch>(`/api/fulfillment/imports/preview?type=${importType.value}`,{method:'POST',body:form});if(batch.value.id){await loadBatchRows();if(batch.value.alreadyImported)ElMessage.warning('该文件已有导入批次，未重复创建')}file.value=undefined;fileKey.value++}catch(e){ElMessage.error(e instanceof Error?e.message:'平台表格预览失败')}finally{previewing.value=false}}
+async function downloadTemplate(type:'jit'|'warehouse'){downloadingTemplate.value=type;try{const filename=type==='jit'?'aliexpress_jit_fulfillment_template.xlsx':'aliexpress_warehouse_fulfillment_template.xlsx';const response=await fetch(`/templates/${filename}`);if(!response.ok)throw new Error(`模板文件读取失败（HTTP ${response.status}），请刷新页面或重启前端服务`);const blob=await response.blob();if(!blob.size)throw new Error('模板文件为空，请重新构建前端');const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;document.body.appendChild(anchor);anchor.click();anchor.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){ElMessage.error(e instanceof Error?e.message:'模板下载失败')}finally{downloadingTemplate.value=''}}
+async function loadBatchRows(){if(!batch.value?.id)return;loadingRows.value=true;try{const data=await api<any>(`/api/fulfillment/imports/${batch.value.id}`);rows.value=(data.rows||[]).map((r:any)=>({rowNumber:r.rowNumber,rowStatus:r.rowStatus,normalized:parse(r.normalizedData),errors:(parse(r.validationErrors)||[])}))}catch(e){ElMessage.error(e instanceof Error?e.message:'导入行读取失败')}finally{loadingRows.value=false}}
+async function commitImport(){if(!batch.value)return;try{await ElMessageBox.confirm('仅提交字段校验通过的记录；SKU 未匹配行会进入异常中心。','确认导入',{type:'warning'});committing.value=true;const result=await api<any>(`/api/fulfillment/imports/${batch.value.id}/commit`,{method:'POST'});ElMessage.success(`新增 ${result.created} · 更新 ${result.updated} · 重复 ${result.duplicates} · 未匹配 ${result.unmatched}`);await loadBatchRows();await loadDocuments()}catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(e instanceof Error?e.message:'导入失败')}finally{committing.value=false}}
+async function loadDocuments(){loadingDocs.value=true;try{const p=new URLSearchParams({page:String(page.value),pageSize:String(pageSize.value)});if(docType.value)p.set('type',docType.value);if(docStatus.value)p.set('status',docStatus.value);if(query.value.trim())p.set('q',query.value.trim());const data=await api<any>(`/api/fulfillment/documents?${p}`);documents.value=data.items;total.value=data.total}catch(e){ElMessage.error(e instanceof Error?e.message:'履约单列表读取失败')}finally{loadingDocs.value=false}}
+async function openDocument(row:FulfillmentDoc){try{active.value=await api<FulfillmentDoc>(`/api/fulfillment/documents/${row.id}`);detailVisible.value=true}catch(e){ElMessage.error(e instanceof Error?e.message:'履约单详情读取失败')}}
+async function createDispatch(){if(!active.value)return;const items=active.value.items.filter(i=>Number(i.orderedQty)>Number(i.shippedQty)&&i.skuId).map(i=>({itemId:i.id,quantity:Number(i.orderedQty)-Number(i.shippedQty)}));if(!items.length)return;try{await ElMessageBox.confirm(`将在 ${active.value.warehouseName} 创建本次拣货任务，按未发数量生成可分批发货明细。`,'新建拣货任务',{type:'info'});const result=await api<any>(`/api/fulfillment/documents/${active.value.id}/dispatches`,{method:'POST',body:JSON.stringify({idempotencyKey:crypto.randomUUID(),items})});ElMessage.success(`已创建 ${result.dispatchNo}`);await openDocument(active.value);await openDispatch(result.id)}catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(e instanceof Error?e.message:'创建拣货任务失败')}}
+async function openDispatch(id:number){try{activeDispatch.value=await api<any>(`/api/fulfillment/dispatches/${id}`);dispatchVisible.value=true;scanBarcode.value='';handoffReference.value=''}catch(e){ElMessage.error(e instanceof Error?e.message:'拣货批次读取失败')}}
+async function loadShortages(){loadingShortages.value=true;try{const [s,p]=await Promise.all([api<{items:Shortage[]}>('/api/fulfillment/shortages?status=OPEN'),api<{items:any[]}>('/api/fulfillment/shortages/purchase-options')]);shortages.value=s.items;poOptions.value=p.items}catch(e){ElMessage.error(e instanceof Error?e.message:'缺货记录读取失败')}finally{loadingShortages.value=false}}
+async function linkPurchase(row:Shortage){const purchaseOrderItemId=poSelections.value[row.id];if(!purchaseOrderItemId)return ElMessage.warning('请选择采购单明细');try{await api(`/api/fulfillment/shortages/${row.id}/purchase`,{method:'POST',body:JSON.stringify({purchaseOrderItemId})});ElMessage.success('采购单已关联；入库后可继续拣货');await loadShortages()}catch(e){ElMessage.error(e instanceof Error?e.message:'关联采购单失败')}}
+async function pickItem(line:any){if(!activeDispatch.value||!scanBarcode.value.trim())return ElMessage.warning('请先扫描或输入 SKU 条码');working.value=true;try{const result=await api<any>(`/api/fulfillment/dispatches/${activeDispatch.value.id}/pick`,{method:'POST',body:JSON.stringify({barcode:scanBarcode.value.trim(),quantity:scanQty.value})});if(result.shortageWarning)ElMessage.warning(`已记录，当前库存 ${result.availableQty}，请核实缺货`);else ElMessage.success(`已拣 ${result.pickedQty} / ${result.plannedQty}`);await openDispatch(activeDispatch.value.id);scanBarcode.value=''}catch(e){ElMessage.error(e instanceof Error?e.message:'扫码拣货失败')}finally{working.value=false}}
+async function markShortage(line:any){try{const {value}=await ElMessageBox.prompt(`将登记 ${line.plannedQty-line.pickedQty} 件未拣数量为缺货，请填写原因。`,'缺货登记',{inputPlaceholder:'库存不足、货位无货等',inputValidator:v=>!!v?.trim()||'缺货原因必填'});await api(`/api/fulfillment/dispatches/${activeDispatch.value.id}/shortages`,{method:'POST',body:JSON.stringify({itemId:line.itemId,reason:value})});ElMessage.success('缺货已登记，可在待缺货列表关联采购单');await openDispatch(activeDispatch.value.id);await openDocument(active.value!)}catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(e instanceof Error?e.message:'缺货登记失败')}}
+async function handoff(){if(!activeDispatch.value)return;const picked=activeDispatch.value.items.some((i:any)=>Number(i.pickedQty)>0);if(!picked)return ElMessage.warning('请先扫码拣货');try{await ElMessageBox.confirm('确认实际交接数量按已拣数量登记？确认后会扣减本地库存并生成商品/包材流水。','确认交接发货',{type:'warning'});working.value=true;const result=await api<any>(`/api/fulfillment/dispatches/${activeDispatch.value.id}/handoff`,{method:'POST',body:JSON.stringify({handoffReference:handoffReference.value})});ElMessage.success(`已交接 ${result.shippedQty} 件`);if(result.warnings?.length)ElMessage.warning(result.warnings.join('；'));dispatchVisible.value=false;if(active.value)await openDocument(active.value);await loadDocuments()}catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(e instanceof Error?e.message:'交接确认失败')}finally{working.value=false}}
+onMounted(()=>{loadDocuments();loadShortages()})
+</script>
+
+<style scoped>
+.fulfillment-import-row,.fulfillment-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.fulfillment-filters{justify-content:flex-end}.fulfillment-filters>*{width:180px}.fulfillment-batch{margin-top:14px}.fulfillment-batch h3{margin:0}.subline{display:block;color:#8b93a1;font-size:12px;margin-top:4px}.urgent-label{display:block;color:#d97706;font-size:11px}.fulfillment-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:#f7f8fa;padding:14px;border-radius:8px;font-size:13px}.fulfillment-page h3{margin:22px 0 10px}.drawer-actions{display:flex;justify-content:flex-end;margin-top:16px}.scan-inline{display:flex;align-items:center;gap:6px}.scan-inline .el-input-number{width:100px}.dispatch-lines{margin-top:14px}.po-link-row{display:flex;gap:8px}.po-link-row .el-select{flex:1;min-width:160px}@media(max-width:700px){.fulfillment-filters>*{width:100%}.fulfillment-summary{grid-template-columns:1fr}.scan-inline{flex-wrap:wrap}.scan-inline .el-input-number{width:90px}}
+</style>

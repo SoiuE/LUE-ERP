@@ -1,0 +1,6 @@
+CREATE TABLE master_code_sequences (
+  sequence_key VARCHAR(32) PRIMARY KEY,
+  sequence_date DATE NOT NULL,
+  sequence_value BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -1,0 +1,2 @@
+﻿行号,原始数据,失败原因
+"2","{""status"": ""ACTIVE"", ""internal_sku"": ""SKU-EXAMPLE-001"", ""platform_sku"": ""平台SKU-001"", ""shop_identifier"": ""店铺账号标识"", ""default_order_mode"": ""JIT"", ""platform_product_id"": null, ""platform_product_name"": null}","[""店铺标识不存在或已停用""]"
