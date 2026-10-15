@@ -17,8 +17,8 @@ backend/data/warehouse-attachments/
 backend/.mvn/wrapper/maven-wrapper.jar
 .m2/
 
-# Local account notes may contain sign-in details
-app/软件说明.md
+# Local installers and setup notes; keep them out of code transfers
+app/
 
 # Node / Vite
 frontend/node_modules/
