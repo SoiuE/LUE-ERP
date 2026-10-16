@@ -6,7 +6,7 @@
         <el-input v-model="shopId" placeholder="店铺 ID" style="max-width: 120px" />
         <el-input v-model="q" placeholder="平台 SKU / 内部 SKU / 平台订单号" clearable style="max-width: 320px" />
         <el-select v-model="mode" clearable placeholder="全部模式" style="width: 160px">
-          <el-option label="JIT" value="JIT" /><el-option label="仓发 WAREHOUSE" value="WAREHOUSE" />
+          <el-option label="JIT（即时履约）" value="JIT" /><el-option label="仓发（WAREHOUSE）" value="WAREHOUSE" />
         </el-select>
         <el-date-picker v-model="dates" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开始日期" end-placeholder="结束日期" />
         <el-button type="primary" @click="load">查询</el-button>
@@ -19,7 +19,7 @@
         <el-table-column prop="platformOrderNo" label="平台订单号" />
         <el-table-column prop="platformSku" label="平台 SKU" />
         <el-table-column prop="internalSku" label="内部 SKU"><template #default="{ row }">{{ row.internalSku || '未匹配' }}</template></el-table-column>
-        <el-table-column prop="orderMode" label="模式" width="140" />
+        <el-table-column prop="orderMode" label="模式" width="160"><template #default="{row}">{{ orderModeName(row.orderMode) }}</template></el-table-column>
         <el-table-column prop="quantity" label="销量" />
         <el-table-column prop="salesAmount" label="销售收入（元）" />
         <el-table-column prop="refundAmount" label="退款（元）" />
@@ -45,6 +45,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const loading = ref(false)
+function orderModeName(value:string){return ({JIT:'JIT（即时履约）',WAREHOUSE:'仓发（WAREHOUSE）'} as Record<string,string>)[value]||'其他模式'}
 
 async function load() {
   loading.value = true

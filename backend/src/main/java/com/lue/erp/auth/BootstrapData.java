@@ -25,10 +25,21 @@ public class BootstrapData implements CommandLineRunner {
         permission("master.skus.view", "SKU 中心", "MENU", "/skus");
         permission("master.suppliers.view", "供应商", "MENU", "/suppliers");
         permission("master.materials.view", "包材档案", "MENU", "/materials");
+        permission("master.goods.view", "仓库货品档案", "MENU", "/warehouse-goods");
+        permission("master.compositions.view", "销售 SKU 组成清单", "API", null);
+        permission("button.goods.manage", "维护仓库货品", "BUTTON", null);
+        permission("button.compositions.manage", "维护组成清单版本", "BUTTON", null);
+        permission("warehouse.locations.view", "仓库库位档案", "MENU", "/warehouse-locations");
+        permission("button.locations.manage", "维护仓库库位", "BUTTON", null);
+        permission("warehouse.location_stock.view", "货品库位库存查询", "MENU", "/location-inventory");
+        permission("warehouse.goods.purchase", "货品采购与确认", "API", null);
+        permission("warehouse.goods.receive", "货品采购收货", "API", null);
+        permission("warehouse.goods.putaway", "货品上架", "API", null);
+        permission("warehouse.goods.move", "货品移库", "API", null);
+        permission("warehouse.goods.outbound", "货品出库", "API", null);
         permission("master.mappings.view", "店铺 SKU 映射", "MENU", "/mappings");
         permission("menu.imports", "导入中心", "MENU", "/imports");
         permission("menu.purchases", "采购管理", "MENU", "/purchases");
-        permission("menu.inventory", "本地仓库存", "MENU", "/inventory");
         permission("menu.package-stocks", "包材库存", "MENU", "/package-stocks");
         permission("menu.mobile", "手机仓库", "MENU", "/mobile");
         permission("menu.profits", "SKU 利润报表", "MENU", "/profits");
@@ -37,10 +48,18 @@ public class BootstrapData implements CommandLineRunner {
         permission("button.imports.manage", "执行 Excel 导入", "BUTTON", null);
         permission("master.data.manage", "维护主数据", "BUTTON", null);
         grant("ADMIN", "menu.dashboard", "menu.users", "menu.roles", "menu.logs", "button.users.manage",
-            "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.inventory", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
-        grant("OPERATOR", "menu.dashboard", "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.inventory", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
+            "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.goods.view", "master.compositions.view", "button.goods.manage", "button.compositions.manage", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
+        grant("OPERATOR", "menu.dashboard", "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.goods.view", "master.compositions.view", "button.goods.manage", "button.compositions.manage", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
         grant("VIEWER", "menu.dashboard", "menu.profits");
         grant("WAREHOUSE", "menu.mobile");
+        grant("ADMIN", "warehouse.locations.view", "button.locations.manage", "warehouse.location_stock.view");
+        grant("OPERATOR", "warehouse.locations.view", "button.locations.manage", "warehouse.location_stock.view");
+        grant("WAREHOUSE", "warehouse.locations.view", "warehouse.location_stock.view");
+        grant("ADMIN", "warehouse.goods.purchase", "warehouse.goods.putaway", "warehouse.goods.move", "warehouse.goods.outbound");
+        grant("OPERATOR", "warehouse.goods.purchase", "warehouse.goods.putaway", "warehouse.goods.move", "warehouse.goods.outbound");
+        grant("ADMIN", "warehouse.goods.receive");
+        grant("OPERATOR", "warehouse.goods.receive");
+        grant("WAREHOUSE", "menu.purchases", "warehouse.goods.receive", "warehouse.goods.putaway", "warehouse.goods.move");
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE username=?", Integer.class, adminUsername);
         if (count == 0) {
             jdbc.update("INSERT INTO users(username,password_hash,display_name) VALUES (?,?,?)", adminUsername, encoder.encode(adminPassword), "系统管理员");

@@ -34,52 +34,17 @@ public class MobileWarehouseController {
     @GetMapping("/dashboard")
     public ApiResponse<Map<String,Object>> dashboard(@AuthenticationPrincipal AuthUser user){mobile(user);
         return ApiResponse.ok(Map.of(
-            "pendingConfirm",scalar("SELECT COUNT(*) FROM purchase_orders WHERE status='DRAFT'"),
-            "pendingReceipt",scalar("SELECT COUNT(*) FROM purchase_orders WHERE status IN ('CONFIRMED','PARTIALLY_RECEIVED')"),
-            "inboundToday",decimal("SELECT COALESCE(SUM(quantity_delta),0) FROM inventory_flows WHERE flow_type IN ('PURCHASE_INBOUND','MANUAL_INBOUND') AND DATE(created_at)=CURRENT_DATE"),
-            "outboundToday",decimal("SELECT COALESCE(SUM(ABS(quantity_delta)),0) FROM inventory_flows WHERE flow_type IN ('JIT_OUTBOUND','STOCKING_OUTBOUND','MANUAL_OUTBOUND') AND DATE(created_at)=CURRENT_DATE"),
+            "pendingConfirm",0,
+            "pendingReceipt",0,
+            "inboundToday",decimal("SELECT COALESCE(SUM(available_delta),0) FROM warehouse_goods_stock_flows WHERE flow_type='RECEIPT' AND DATE(created_at)=CURRENT_DATE"),
+            "outboundToday",decimal("SELECT COALESCE(SUM(ABS(available_delta)),0) FROM warehouse_goods_stock_flows WHERE flow_type='OUTBOUND' AND DATE(created_at)=CURRENT_DATE"),
             "openExceptions",scalar("SELECT COUNT(*) FROM exceptions WHERE status='OPEN'"),
-            "negativeStocks",scalar("SELECT COUNT(*) FROM inventory_stocks WHERE available_qty<0")
+            "negativeStocks",scalar("SELECT COUNT(*) FROM warehouse_goods_location_balances WHERE available_qty<0")
         ));
-    }
-
-    @GetMapping("/purchases")
-    public ApiResponse<Map<String,Object>> purchases(@RequestParam(defaultValue="confirm") String stage,@RequestParam(required=false) String q,
-            @RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="30") int pageSize,@AuthenticationPrincipal AuthUser user){mobile(user);
-        int p=Math.max(page,1),s=Math.min(100,Math.max(1,pageSize));StringBuilder where=new StringBuilder(" WHERE 1=1");List<Object>args=new ArrayList<>();
-        if("confirm".equalsIgnoreCase(stage))where.append(" AND po.status='DRAFT'");else if("receipt".equalsIgnoreCase(stage))where.append(" AND po.status IN ('CONFIRMED','PARTIALLY_RECEIVED')");
-        if(q!=null&&!q.isBlank()){where.append(" AND (po.po_no LIKE ? OR po.tracking_no LIKE ? OR po.order_no LIKE ? OR sp.supplier_name LIKE ? OR EXISTS (SELECT 1 FROM purchase_order_items i JOIN skus sk ON sk.id=i.sku_id WHERE i.purchase_order_id=po.id AND (sk.internal_sku LIKE ? OR sk.barcode LIKE ?)) )");for(int i=0;i<6;i++)args.add("%"+q.trim()+"%");}
-        String from=" FROM purchase_orders po JOIN suppliers sp ON sp.id=po.supplier_id";Long total=db.queryForObject("SELECT COUNT(*)"+from+where,Long.class,args.toArray());args.add(s);args.add((p-1)*s);
-        List<Map<String,Object>>items=db.queryForList("SELECT po.id,po.po_no poNo,po.tracking_no trackingNo,po.order_no orderNo,sp.supplier_name supplierName,po.status,po.is_abnormal isAbnormal,po.abnormal_reason abnormalReason,po.expected_arrival_date expectedArrivalDate,(SELECT COUNT(*) FROM purchase_order_items i WHERE i.purchase_order_id=po.id) itemCount FROM purchase_orders po JOIN suppliers sp ON sp.id=po.supplier_id"+where+" ORDER BY po.updated_at DESC LIMIT ? OFFSET ?",args.toArray());
-        return ApiResponse.ok(Map.of("items",items,"total",Objects.requireNonNullElse(total,0L),"page",p,"pageSize",s));
-    }
-
-    @GetMapping("/purchases/{id}")
-    public ApiResponse<Map<String,Object>> purchase(@PathVariable long id,@AuthenticationPrincipal AuthUser user){mobile(user);return warehouse.purchase(id,user);}
-
-    @GetMapping("/skus")
-    public ApiResponse<Map<String,Object>> skus(@RequestParam(required=false) String q,@RequestParam(defaultValue="50") int limit,@AuthenticationPrincipal AuthUser user){mobile(user);
-        int size=Math.min(100,Math.max(1,limit));String where=" WHERE s.status='ACTIVE' AND s.is_deleted=FALSE";List<Object>args=new ArrayList<>();if(q!=null&&!q.isBlank()){where+=" AND (s.internal_sku LIKE ? OR s.barcode LIKE ? OR s.product_name LIKE ? OR s.name_zh LIKE ?)";for(int i=0;i<4;i++)args.add("%"+q.trim()+"%");}args.add(size);
-        return ApiResponse.ok(Map.of("items",db.queryForList("SELECT s.id,s.internal_sku internalSku,s.product_name productName,s.barcode,s.image_url imageUrl,COALESCE(st.available_qty,0) availableQty FROM skus s LEFT JOIN inventory_stocks st ON st.sku_id=s.id"+where+" ORDER BY s.internal_sku LIMIT ?",args.toArray())));
     }
 
     @GetMapping("/packages")
     public ApiResponse<Map<String,Object>> packages(@RequestParam(required=false) String q,@AuthenticationPrincipal AuthUser user){mobile(user);return warehouse.packages(1,100,q,user);}
-
-    @PostMapping("/purchases/{id}/confirm") @Transactional
-    public ApiResponse<Map<String,Object>> confirm(@PathVariable long id,@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.confirmPurchase(id,body,user);return audited("purchase.confirm", "purchase_order", id, body, user, request, result.data());}
-
-    @PostMapping("/purchases/{id}/abnormal") @Transactional
-    public ApiResponse<Map<String,Object>> markAbnormal(@PathVariable long id,@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.markPurchaseAbnormal(id,body,user);return audited("purchase.abnormal", "purchase_order", id, body, user, request, result.data());}
-
-    @PostMapping("/purchases/{id}/abnormal/resolve") @Transactional
-    public ApiResponse<Map<String,Object>> resolveAbnormal(@PathVariable long id,@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.resolvePurchaseAbnormal(id,body,user);return audited("purchase.abnormal.resolve", "purchase_order", id, body, user, request, result.data());}
-
-    @PostMapping("/purchases/{id}/receipts") @Transactional
-    public ApiResponse<Map<String,Object>> receive(@PathVariable long id,@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.receivePurchase(id,body,user);return audited("purchase.receipt", "purchase_order", id, body, user, request, result.data());}
-
-    @PostMapping("/inventory/operations") @Transactional
-    public ApiResponse<Map<String,Object>> inventory(@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.inventoryOperation(body,user);return audited("inventory."+Objects.toString(body.get("operation"),"operation").toLowerCase(Locale.ROOT),"sku",Objects.toString(body.get("skuId"),""),body,user,request,result.data());}
 
     @PostMapping("/packages/operations") @Transactional
     public ApiResponse<Map<String,Object>> packages(@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.packageOperation(body,user);return audited("package."+Objects.toString(body.get("operation"),"operation").toLowerCase(Locale.ROOT),"package_material",Objects.toString(body.get("materialId"),""),body,user,request,result.data());}

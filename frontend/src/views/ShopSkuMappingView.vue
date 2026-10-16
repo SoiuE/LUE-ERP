@@ -15,7 +15,7 @@
         <el-table-column prop="platformProductId" label="平台商品 ID" min-width="145" show-overflow-tooltip/>
         <el-table-column prop="platformProductName" label="平台商品名称" min-width="180" show-overflow-tooltip/>
         <el-table-column label="内部 SKU" min-width="145"><template #default="scope"><strong>{{ scope.row.internalSku }}</strong><small class="mapping-product-name">{{ scope.row.productName }}</small></template></el-table-column>
-        <el-table-column prop="defaultOrderMode" label="默认订单模式" width="130"><template #default="scope"><el-tag :type="scope.row.defaultOrderMode === 'JIT' ? 'warning' : 'primary'" effect="light" size="small">{{ scope.row.defaultOrderMode === 'JIT' ? 'JIT' : '仓发' }}</el-tag></template></el-table-column>
+        <el-table-column prop="defaultOrderMode" label="默认订单模式" width="165"><template #default="scope"><el-tag :type="scope.row.defaultOrderMode === 'JIT' ? 'warning' : 'primary'" effect="light" size="small">{{ scope.row.defaultOrderMode === 'JIT' ? 'JIT（即时履约）' : '仓发（WAREHOUSE）' }}</el-tag></template></el-table-column>
         <el-table-column prop="status" label="状态" width="90"><template #default="scope"><el-tag :type="scope.row.status === 'ACTIVE' ? 'success' : 'info'" effect="light" size="small">{{ scope.row.status === 'ACTIVE' ? '启用' : '已停用' }}</el-tag></template></el-table-column>
         <el-table-column label="操作" fixed="right" width="132"><template #default="scope"><el-button v-if="canManage" link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button v-if="canManage && scope.row.status === 'ACTIVE'" link type="warning" @click="deactivate(scope.row)">停用</el-button></template></el-table-column>
       </el-table>
@@ -27,7 +27,7 @@
         <el-form-item label="店铺" required><el-select v-model="form.shopId" filterable remote :remote-method="loadShops" :loading="shopLoading" placeholder="搜索并选择启用中的店铺"><el-option v-for="shop in shops" :key="shop.id" :label="`${shop.shopName} · ${shop.shopIdentifier}`" :value="shop.id"/></el-select></el-form-item>
         <el-form-item label="内部 SKU" required><el-select v-model="form.skuId" filterable remote :remote-method="loadSkus" :loading="skuLoading" placeholder="搜索并选择启用中的内部 SKU"><el-option v-for="sku in skus" :key="sku.id" :label="`${sku.internalSku} · ${sku.productName}`" :value="sku.id"/></el-select></el-form-item>
         <el-form-item label="平台 SKU" required><el-input v-model="form.platformSku" maxlength="160" placeholder="填写店铺侧的平台 SKU"/></el-form-item>
-        <el-form-item label="默认订单模式" required><el-select v-model="form.defaultOrderMode"><el-option label="JIT" value="JIT"/><el-option label="仓发（WAREHOUSE）" value="WAREHOUSE"/></el-select></el-form-item>
+        <el-form-item label="默认订单模式" required><el-select v-model="form.defaultOrderMode"><el-option label="JIT（即时履约）" value="JIT"/><el-option label="仓发（WAREHOUSE）" value="WAREHOUSE"/></el-select></el-form-item>
         <el-form-item label="平台商品 ID"><el-input v-model="form.platformProductId" maxlength="160" placeholder="选填"/></el-form-item>
         <el-form-item label="平台商品名称"><el-input v-model="form.platformProductName" maxlength="255" placeholder="选填"/></el-form-item>
       </el-form>

@@ -30,17 +30,17 @@ public class ProfitReportService {
     }
 
     private static String select(QuerySpec spec) {
-        return "SELECT " + spec.columns + ",SUM(d.sales_qty) salesQty,SUM(d.sales_revenue) salesRevenue,SUM(d.platform_fee) platformFee,SUM(d.purchase_cost) purchaseCost,SUM(d.package_cost) packageCost,SUM(d.refund_loss) refundLoss,SUM(d.other_cost) otherCost,SUM(d.gross_profit) grossProfit,CASE WHEN SUM(d.sales_revenue)=0 THEN NULL ELSE SUM(d.gross_profit)/SUM(d.sales_revenue) END grossMargin";
+        return "SELECT " + spec.columns + ",SUM(d.sales_qty) salesQty,SUM(d.sales_revenue) salesRevenue,SUM(d.platform_fee) platformFee,SUM(d.purchase_cost) purchaseCost,SUM(d.package_cost) packageCost,SUM(d.refund_loss) refundLoss,SUM(d.other_cost) otherCost,SUM(d.gross_profit) grossProfit,SUM(d.actual_cost_orders) actualCostOrders,SUM(d.mixed_cost_orders) mixedCostOrders,SUM(d.legacy_cost_orders) legacyCostOrders,SUM(d.cost_unmatched_orders) costUnmatchedOrders,SUM(d.estimated_orders) estimatedOrders,SUM(d.partial_settlement_orders) partialSettlementOrders,SUM(d.settled_orders) settledOrders,SUM(d.settlement_difference) settlementDifference,CASE WHEN SUM(d.sales_revenue)=0 THEN NULL ELSE SUM(d.gross_profit)/SUM(d.sales_revenue) END grossMargin";
     }
     private static QuerySpec spec(String dimension) {
         return switch (dimension) {
             case "daily" -> new QuerySpec("d.profit_date, d.shop_id, d.sku_id, d.order_mode",
-                "d.profit_date reportDate,COALESCE(sh.shop_name,'未归属店铺') shopName,s.internal_sku internalSku,s.product_name productName,d.order_mode orderMode",
+                "d.profit_date reportDate,d.shop_id shopId,d.sku_id skuId,COALESCE(sh.shop_name,'未归属店铺') shopName,s.internal_sku internalSku,s.product_name productName,d.order_mode orderMode",
                 "d.profit_date DESC,sh.shop_name,s.internal_sku,d.order_mode");
             case "monthly" -> new QuerySpec("DATE_FORMAT(d.profit_date,'%Y-%m'),d.shop_id,d.sku_id,d.order_mode",
-                "DATE_FORMAT(d.profit_date,'%Y-%m') reportMonth,COALESCE(sh.shop_name,'未归属店铺') shopName,s.internal_sku internalSku,s.product_name productName,d.order_mode orderMode",
+                "DATE_FORMAT(d.profit_date,'%Y-%m') reportMonth,d.shop_id shopId,d.sku_id skuId,COALESCE(sh.shop_name,'未归属店铺') shopName,s.internal_sku internalSku,s.product_name productName,d.order_mode orderMode",
                 "reportMonth DESC,sh.shop_name,s.internal_sku,d.order_mode");
-            case "shop" -> new QuerySpec("d.shop_id", "COALESCE(sh.shop_name,'未归属店铺') shopName", "shopName");
+            case "shop" -> new QuerySpec("d.shop_id", "d.shop_id shopId,COALESCE(sh.shop_name,'未归属店铺') shopName", "shopName");
             case "mode" -> new QuerySpec("d.order_mode", "d.order_mode orderMode", "d.order_mode");
             default -> throw new IllegalArgumentException("利润报表维度无效");
         };

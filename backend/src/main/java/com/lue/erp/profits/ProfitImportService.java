@@ -52,10 +52,10 @@ public class ProfitImportService {
         if (!Set.of("settlement", "other_cost").contains(type)) throw new IllegalArgumentException("未知利润导入模板");
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             String[] headers = type.equals("settlement")
-                ? new String[]{"店铺标识", "平台订单号", "平台 SKU", "订单模式", "结算日期", "平台费用（元）", "结算金额（元）"}
+                ? new String[]{"店铺标识", "平台账单号", "平台结算明细号", "平台订单号", "订单明细号", "平台 SKU", "订单模式", "结算日期", "平台费用（元）", "结算金额（元）", "调整类型", "调整金额（元）", "最终结算"}
                 : new String[]{"店铺标识", "内部 SKU", "费用日期", "费用金额（元）", "备注"};
             String[] example = type.equals("settlement")
-                ? new String[]{"替换为店铺标识", "", "平台SKU-001", "JIT", "2026-10-13", "5.00", "95.00"}
+                ? new String[]{"替换为店铺标识", "账单-001", "明细-001", "订单-001", "订单行-001", "平台SKU-001", "JIT", "2026-10-13", "5.00", "95.00", "", "", "N"}
                 : new String[]{"替换为店铺标识", "SKU-001", "2026-10-13", "2.00", "营销分摊"};
             Sheet sheet = wb.createSheet("利润数据"); Row head = sheet.createRow(0); Row sample = sheet.createRow(1);
             CellStyle style = wb.createCellStyle(); Font font = wb.createFont(); font.setBold(true); style.setFont(font);
@@ -63,10 +63,10 @@ public class ProfitImportService {
             sheet.createFreezePane(0, 1); sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, headers.length - 1));
             Sheet guide = wb.createSheet("填写说明");
             String[][] notes = type.equals("settlement") ? new String[][]{
-                {"字段", "填写要求"}, {"店铺标识", "必填，填写系统中已启用的店铺标识"}, {"平台订单号", "选填"},
-                {"平台 SKU", "必填，必须已有有效店铺 SKU 映射"}, {"订单模式", "选填；为空时采用映射默认模式；仅 JIT 或 WAREHOUSE"},
-                {"结算日期", "必填，YYYY-MM-DD"}, {"平台费用（元）", "必填，人民币；允许负数冲正"}, {"结算金额（元）", "选填，人民币，仅保存供核对"},
-                {"说明", "结算导入中的平台费用覆盖同日同店铺、SKU、订单模式的订单表平台费用"}
+                {"字段", "填写要求"}, {"店铺标识", "必填，填写系统中已启用的店铺标识"}, {"平台账单号/结算明细号", "应填写稳定标识，用于跨文件去重；缺失时进入待映射异常"},
+                {"平台订单号/平台 SKU", "用于严格匹配订单；多候选或无候选进入异常"}, {"订单模式", "可空，采用店铺 SKU 映射默认模式"},
+                {"结算日期", "必填，YYYY-MM-DD；不作为利润归属日期"}, {"平台费用（元）", "必填，为明确费用；允许负数冲正"}, {"结算金额（元）", "现金流金额，仅供结算查询，不新增销售收入"},
+                {"调整类型", "仅 FEE_DELTA、REFUND_DELTA、OTHER_COST_DELTA；不明类型进入异常"}, {"调整金额（元）", "可正可负；DELTA 为相对订单暂估的增量"}, {"最终结算", "Y 表示平台确认最终结算；其余为部分结算"}
             } : new String[][]{
                 {"字段", "填写要求"}, {"店铺标识", "必填，填写系统中已启用的店铺标识"}, {"内部 SKU", "必填，填写已启用的内部 SKU"},
                 {"费用日期", "必填，YYYY-MM-DD"}, {"费用金额（元）", "必填，人民币非负数"}, {"备注", "选填"},
@@ -120,7 +120,7 @@ public class ProfitImportService {
                     batchId, row.rowNumber(), n.get("shopId"), n.get("skuId"), n.get("date"), n.get("amount"), n.get("note"));
             }
         }
-        Map<String, Object> recalc = calculation.recalculate(min, max);
+        Map<String, Object> recalc = calculation.recalculate(min, max, "OTHER_COST_IMPORT", actor.id(), null, null);
         audit(actor, request, "profit.import." + type, batchId, Map.of("batchNo", batchNo, "rows", rows.size(), "forceReimport", force, "recalculated", recalc));
         return Map.of("batchNo", batchNo, "rows", rows.size(), "dateFrom", min.toString(), "dateTo", max.toString(), "recalculatedRows", recalc.get("rows"));
     }

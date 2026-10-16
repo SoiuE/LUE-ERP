@@ -21,7 +21,7 @@
         <el-table-column prop="originalFilename" label="文件名" min-width="200" show-overflow-tooltip/>
         <el-table-column label="状态" width="125"><template #default="{row}"><el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
         <el-table-column label="行数" width="200"><template #default="{row}">共 {{ row.totalRows }} · 有效 {{ row.validRows }} · 错误 {{ row.errorRows }}</template></el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" min-width="180"/>
+        <el-table-column prop="createdAt" label="创建时间" min-width="180"><template #default="{row}">{{ formatChinaDateTime(row.createdAt) }}</template></el-table-column>
         <el-table-column label="操作" width="240" fixed="right"><template #default="{row}"><el-button link type="primary" @click.stop="selectBatch(row)">预览</el-button><el-button link @click.stop="downloadOriginal(row)">原文件</el-button><el-button v-if="row.errorRows || row.errorMessage" link type="danger" @click.stop="downloadFailures(row)">失败明细</el-button></template></el-table-column>
       </el-table>
       <div class="pagination-wrap"><el-pagination v-model:current-page="batchPage" v-model:page-size="batchPageSize" :total="batchTotal" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" @change="loadBatches"/></div>
@@ -35,7 +35,7 @@
         <el-table-column prop="rowNumber" label="Excel 行" width="90" fixed/>
         <el-table-column prop="rowStatus" label="校验" width="105"><template #default="{row}"><el-tag :type="row.rowStatus==='ERROR'?'danger':row.rowStatus==='IMPORTED'?'success':'success'">{{ row.rowStatus==='ERROR'?'失败':row.rowStatus==='IMPORTED'?'已导入':'通过' }}</el-tag></template></el-table-column>
         <el-table-column v-for="column in previewColumns" :key="column" :prop="`raw.${column}`" :label="previewLabel(column)" min-width="150" show-overflow-tooltip>
-          <template #default="{row}">{{ row.raw?.[column] ?? '—' }}</template>
+          <template #default="{row}">{{ previewValue(column,row.raw?.[column]) }}</template>
         </el-table-column>
         <el-table-column label="失败原因" min-width="240" fixed="right"><template #default="{row}">{{ (row.errors || []).join('；') || '—' }}</template></el-table-column>
       </el-table>
@@ -49,6 +49,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
 import { api, getToken } from '../api'
+import { formatChinaDateTime } from '../utils/chinaTime'
 
 type Batch={id:number;batchNo:string;importType:'sku'|'shop_sku_mapping'|'settlement'|'other_cost';originalFilename:string;status:string;forceReimport:boolean;totalRows:number;validRows:number;errorRows:number;importedRows:number;errorMessage?:string;createdAt:string;rows?:unknown[];previewTotal:number}
 type PreviewRow={id:number;rowNumber:number;rawData:unknown;validationErrors:unknown;rowStatus:string;raw:Record<string,unknown>;errors:string[]}
@@ -62,6 +63,7 @@ function fileChanged(file:{raw?:File}){selectedFile.value=file.raw}
 function fileRemoved(){selectedFile.value=undefined}
 function typeLabel(type:string){return ({sku:'SKU',shop_sku_mapping:'店铺 SKU 映射',settlement:'结算数据',other_cost:'其他分摊费用'} as Record<string,string>)[type]||type}
 function previewLabel(field:string){return previewLabels[field]||field}
+function previewValue(field:string,value:unknown){if(value==null||value==='')return'—';const text=String(value);if(['order_mode','default_order_mode'].includes(field))return ({JIT:'JIT（即时履约）',WAREHOUSE:'仓发（WAREHOUSE）'} as Record<string,string>)[text]||text;if(field==='status')return ({ACTIVE:'启用',INACTIVE:'停用'} as Record<string,string>)[text]||text;if(field==='category')return ({PRODUCT_PACKAGING:'产品包装',SHIPPING_MATERIAL:'发货打包材料'} as Record<string,string>)[text]||text;return value}
 function statusLabel(status:string){return ({PENDING:'待确认',VALIDATING:'校验中',FAILED:'失败',SUCCESS:'成功',PARTIAL_SUCCESS:'部分成功'} as Record<string,string>)[status]||status}
 function statusType(status:string){return status==='SUCCESS'?'success':status==='FAILED'?'danger':status==='PENDING'?'warning':'info'}
 async function loadBatches(){loadingBatches.value=true;try{const data=await api<{items:Batch[];total:number}>(`/api/import-batches?page=${batchPage.value}&pageSize=${batchPageSize.value}`);batches.value=data.items;batchTotal.value=data.total}catch(e){ElMessage.error(e instanceof Error?e.message:'批次列表读取失败')}finally{loadingBatches.value=false}}

@@ -13,7 +13,7 @@
           <template #default="scope"><el-tag v-if="column.key === 'status'" :type="scope.row.status === 'ACTIVE' ? 'success' : 'info'" effect="light" size="small">{{ scope.row.status === 'ACTIVE' ? '启用' : '已停用' }}</el-tag><el-tag v-else-if="column.key === 'category'" :type="scope.row.category === 'PRODUCT_PACKAGING' ? 'warning' : 'primary'" effect="light" size="small">{{ categoryName(scope.row.category) }}</el-tag><span v-else-if="column.money">¥ {{ formatMoney(scope.row[column.key]) }}</span><span v-else-if="column.key === 'supplierName'">{{ scope.row.supplierName || '—' }}</span><span v-else>{{ scope.row[column.key] ?? '—' }}</span></template>
         </el-table-column>
         <el-table-column prop="updatedAt" label="最近更新" min-width="160"><template #default="scope">{{ formatDate(scope.row.updatedAt) }}</template></el-table-column>
-        <el-table-column v-if="canManage" label="操作" fixed="right" width="176"><template #default="scope"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button v-if="scope.row.status === 'ACTIVE'" link type="warning" @click="deactivate(scope.row)">停用</el-button><el-button link type="danger" @click="softDelete(scope.row)">删除</el-button></template></el-table-column>
+        <el-table-column label="操作" fixed="right" :width="kind==='skus'?250:176"><template #default="scope"><el-button v-if="kind==='skus'" link type="success" @click="openSkuDetails(scope.row)">详情 / 组成</el-button><template v-if="canManage"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button v-if="scope.row.status === 'ACTIVE'" link type="warning" @click="deactivate(scope.row)">停用</el-button><el-button link type="danger" @click="softDelete(scope.row)">删除</el-button></template></template></el-table-column>
       </el-table>
       <div class="master-pagination"><span>共 {{ total }} 条</span><el-pagination v-model:current-page="page" v-model:page-size="pageSize" :page-sizes="[10,20,50,100]" layout="sizes, prev, pager, next" :total="total" @current-change="load" @size-change="onSizeChange"/></div>
     </div>
@@ -59,12 +59,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { api, type AuthUser } from '../api'
+import { formatChinaDateTime } from '../utils/chinaTime'
 
 type Field = { key: string; label: string; type?: 'number'|'textarea'|'json'|'packagePlan'; category?:'PRODUCT_PACKAGING'|'SHIPPING_MATERIAL'; required?: boolean; wide?: boolean; money?: boolean; maxlength?: number; hint?:string; options?: {label:string;value:string}[] }
 const props = defineProps<{ kind: 'shops'|'skus'|'suppliers'|'materials'; user?: AuthUser }>()
+const router = useRouter()
 const commonStatus: Field = { key: 'status', label: '状态', options: [{label:'启用',value:'ACTIVE'},{label:'停用',value:'INACTIVE'}] }
 const configs: Record<string, {title:string;shortName:string;english:string;description:string;columns:{key:string;label:string;width?:number;money?:boolean}[];fields:Field[]}> = {
   shops: { title:'店铺管理', shortName:'店铺', english:'SHOPS', description:'维护平台店铺档案，停用店铺不会出现在后续业务单据的默认选项中。', columns:[{key:'shopName',label:'店铺名称',width:170},{key:'platform',label:'平台',width:110},{key:'shopIdentifier',label:'店铺标识',width:160},{key:'accountEntity',label:'账号主体'},{key:'ownerName',label:'负责人'},{key:'status',label:'状态',width:90}], fields:[{key:'shopName',label:'店铺名称',required:true},{key:'platform',label:'平台',required:true,options:[{label:'速卖通',value:'ALIEXPRESS'},{label:'Temu',value:'TEMU'},{label:'TikTok',value:'TIKTOK'},{label:'Shopee',value:'SHOPEE'},{label:'其他',value:'OTHER'}]},{key:'shopIdentifier',label:'店铺账号或标识',required:true},{key:'accountEntity',label:'账号主体'},{key:'ownerName',label:'店铺负责人'},commonStatus,{key:'note',label:'备注',type:'textarea',wide:true}] },
@@ -98,6 +101,7 @@ async function load() {
   finally { loading.value=false }
 }
 function searchNow(){page.value=1;load()}
+function openSkuDetails(row:Record<string,any>){router.push(`/skus/${row.id}/details`)}
 function onSizeChange(){page.value=1;load()}
 async function loadSuppliers(){try{const data=await api<{items:Record<string,any>[]}>(`/api/master/suppliers?page=1&pageSize=100&status=ACTIVE`);suppliers.value=data.items}catch{}}
 function blankForm(){for(const field of config.value.fields){form[field.key]=field.type==='json'?'':field.type==='packagePlan'?[]:field.type==='number'?0:field.key==='status'?'ACTIVE':field.key==='platform'?'ALIEXPRESS':''}for(const category of ['PRODUCT_PACKAGING','SHIPPING_MATERIAL']){selectedMaterials[category]=[];planQuantities[category]={};materialSearch[category]=''}}
@@ -124,5 +128,5 @@ async function deactivate(row:Record<string,any>){try{await ElMessageBox.confirm
 async function softDelete(row:Record<string,any>){try{await ElMessageBox.confirm(`确定删除“${row[config.value.columns[0].key]}”吗？记录将从日常列表隐藏。`,'确认删除',{type:'warning',confirmButtonText:'确认删除',cancelButtonText:'取消'});await api(`/api/master/${props.kind}/${row.id}`,{method:'DELETE'});ElMessage.success('已删除');await load()}catch(error){if(error!=='cancel'&&error!=='close')ElMessage.error(error instanceof Error?error.message:'删除失败')}}
 function categoryName(category:string){return category==='PRODUCT_PACKAGING'?'产品包装':category==='SHIPPING_MATERIAL'?'发货打包材料':category||'—'}
 function formatMoney(value:any){return Number(value||0).toFixed(4)}
-function formatDate(value:any){if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?String(value).replace('T',' ').slice(0,16):new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short'}).format(date)}
+function formatDate(value:any){return formatChinaDateTime(value)}
 </script>

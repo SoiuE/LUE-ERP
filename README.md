@@ -65,7 +65,7 @@ ALTER USER 'lue_erp_app'@'localhost' IDENTIFIED BY '123456';
 GRANT ALL PRIVILEGES ON lue_erp.* TO 'lue_erp_app'@'localhost';
 ```
 
-如果 `backend/.env` 中的数据库已存在且包含业务数据，不要删除或重建数据库。以上步骤只创建/授权应用账号，Flyway 启动时会在现有库上追加缺少的迁移。
+如果 `backend/.env` 中的数据库已存在且包含业务数据，不要删除或重建数据库。以上步骤只创建/授权应用账号。Flyway 默认关闭；只在已核实的隔离环境中显式设置 `LUE_FLYWAY_ENABLED=true` 验证迁移。生产迁移须另行执行经批准的操作流程。
 
 ```powershell
 cd backend
@@ -92,9 +92,15 @@ npm run dev
 http://localhost:5173
 ```
 
+### Windows 一键启动
+
+完成首次环境配置（JDK、Maven、Node.js/npm、本机 MySQL、`backend/.env` 和 `frontend/node_modules`）后，可双击项目根目录的 `一键启动ERP.bat`。脚本会检查 MySQL 与必要依赖，后台启动尚未运行的前后端，等待健康检查通过后打开浏览器；运行日志保存在 `logs/`。关闭系统时双击 `一键停止ERP.bat`。脚本不会修改数据库或覆盖本地环境配置；如果端口已被其他程序占用，会提示处理。
+
+Windows 本地运行及暂停步骤见[程序运行命令操作文档](docs/程序运行命令操作文档.md)和[程序暂停操作文档](docs/程序暂停操作文档.md)。
+
 ## 登录与初始化账户
 
-首次启动后端时，Flyway 自动创建用户、角色、权限关联和操作日志表，并初始化 `ADMIN`、`OPERATOR`、`VIEWER` 角色及菜单权限。默认管理员账户为 `admin` / `ChangeMe123!`。首次部署前请通过环境变量设置 `LUE_ADMIN_USERNAME`、`LUE_ADMIN_PASSWORD` 和 `LUE_AUTH_SECRET`；管理员只在账户尚不存在时创建，修改环境变量不会重置已存在账户的密码。
+隔离环境显式启用 Flyway 并迁移后，会创建用户、角色、权限关联和操作日志表，并初始化 `ADMIN`、`OPERATOR`、`VIEWER` 角色及菜单权限。默认管理员账户为 `admin` / `ChangeMe123!`。首次部署前请通过环境变量设置 `LUE_ADMIN_USERNAME`、`LUE_ADMIN_PASSWORD` 和 `LUE_AUTH_SECRET`；管理员只在账户尚不存在时创建，修改环境变量不会重置已存在账户的密码。
 
 在 PowerShell 启动前可配置：
 

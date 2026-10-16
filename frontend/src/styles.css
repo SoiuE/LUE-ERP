@@ -26,3 +26,10 @@
  .import-preview-card .el-table { margin-top: 14px; }
  .preview-actions { flex-wrap: wrap; }
  @media (max-width: 760px) { .import-form { grid-template-columns: 1fr; } .import-form .el-form-item:nth-child(3), .import-actions { grid-column: auto; } .section-heading { align-items: flex-start; gap: 12px; flex-direction: column; } }
+/* Physical positions stay readable in selectors, including long warehouse paths. */
+.location-select .el-select__wrapper{min-height:42px;height:auto}
+.location-select .el-select__selected-item{white-space:normal;line-height:1.5;overflow-wrap:anywhere}
+.location-select-dropdown{max-width:min(720px,calc(100vw - 24px))}
+.location-select-dropdown .el-select-dropdown__item{height:auto;min-height:48px;white-space:normal;line-height:1.5;padding-top:8px;padding-bottom:8px}
+.location-select-dropdown .location-option-note{display:block;color:#7c8593;font-size:12px}
+.mobile-shell .van-cell__value,.mobile-shell .van-cell__label{white-space:normal;overflow-wrap:anywhere}

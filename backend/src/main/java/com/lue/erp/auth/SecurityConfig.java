@@ -1,5 +1,6 @@
 package com.lue.erp.auth;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,7 +17,9 @@ public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, AuthFilter authFilter) throws Exception {
         return http.csrf(csrf -> csrf.disable()).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(a -> a.requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/templates/**").permitAll().anyRequest().authenticated())
+            .authorizeHttpRequests(a -> a.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                .requestMatchers("/api/auth/login", "/api/health", "/actuator/health", "/templates/**").permitAll()
+                .anyRequest().authenticated())
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((request, response, ex) -> {
                     response.setStatus(401);
