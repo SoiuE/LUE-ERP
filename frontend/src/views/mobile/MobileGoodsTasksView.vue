@@ -21,7 +21,7 @@
       <template v-else>
         <van-empty v-if="!loading&&!stockRows.length" :description="task==='putaway'?'没有待上架货品':'没有可移库货品'" />
         <van-cell-group v-for="row in filteredStock" :key="`${row.warehouseId}-${row.goodsId}-${row.locationId}`" inset class="mobile-section">
-          <van-cell :title="`${row.goodsCode} · ${row.goodsName}`" :label="`${locationLabel(row)} · 均价 ¥${row.averageUnitCost||0}`" :value="task==='putaway'?`待上架 ${row.pendingPutawayQty}`:`可用 ${row.availableQty}`" />
+          <van-cell :title="`${row.goodsCode} · ${row.goodsName}`" :label="`${row.specification||'无规格'} · ${locationLabel(row)} · 均价 ¥${row.averageUnitCost||0}`" :value="task==='putaway'?`待上架 ${row.pendingPutawayQty}`:`可用 ${row.availableQty}`"><template #icon><ProductReferenceImage :reference="goodsImages.get(row.goodsId)" :label="row.goodsCode" /></template></van-cell>
           <van-cell v-if="task==='putaway'?canPutaway:canMove" title="选择任务" is-link value="办理" @click="openStockTask(row)" />
         </van-cell-group>
       </template>
@@ -36,6 +36,7 @@
         <h2>{{ task==='putaway'?'上架确认':'同仓移库' }}</h2>
         <van-cell-group inset>
           <van-cell title="货品" :value="`${stockTask.goodsCode} · ${stockTask.goodsName}`" />
+          <div class="mobile-reference-task"><ProductReferenceImage :reference="goodsImages.get(stockTask.goodsId)" :label="stockTask.goodsCode" size="medium"/><span>{{ stockTask.goodsCode }} · {{ stockTask.goodsName }} · {{ stockTask.specification||'无规格' }}</span></div>
           <van-cell title="仓库" :value="warehouseName(stockTask.warehouseId)" />
           <van-cell title="来源库位"><template #value><LocationDisplay :location="stockTask"/></template></van-cell>
           <van-cell :title="task==='putaway'?'待上架数量':'來源位可用数量'" :value="task==='putaway'?stockTask.pendingPutawayQty:stockTask.availableQty" />
@@ -60,11 +61,14 @@ import MobilePurchaseNumbers from './MobilePurchaseNumbers.vue'
 import LocationDisplay from '../../components/LocationDisplay.vue'
 import MobileLocationPicker from '../../components/MobileLocationPicker.vue'
 import { locationLabel, locationSearch } from '../../utils/location'
+import ProductReferenceImage from '../../components/ProductReferenceImage.vue'
+import { useProductReferences } from '../../utils/productReferences'
 
 const authUser=inject<Ref<AuthUser|undefined>>('mobileAuthUser')
 const route=useRoute()
 const root='/api/goods-procurement',task=ref<'receipt'|'confirm'|'putaway'|'move'>('receipt'),query=ref(''),loading=ref(false),refreshing=ref(false),saving=ref(false)
 const purchases=ref<any[]>([]),stockRows=ref<any[]>([]),warehouses=ref<any[]>([]),locations=ref<any[]>([])
+const goodsImages=useProductReferences('WAREHOUSE_GOODS')
 const purchaseSheet=ref<InstanceType<typeof MobilePurchaseSheet>>()
 const putawayLocations=ref<any[]>([])
 const targetLocations=computed(()=>task.value==='putaway'?putawayLocations.value:locations.value.filter(x=>!['PENDING_PUTAWAY','QUARANTINE'].includes(x.locationType)&&x.id!==stockTask.value?.locationId))
@@ -91,7 +95,7 @@ async function load(){
       if(version===loadVersion)purchases.value=result.items.filter(x=>current==='confirm'?x.status==='DRAFT':['CONFIRMED','PARTIALLY_RECEIVED'].includes(x.status))
     }else{
       const [stock,lookups]=await Promise.all([api<{items:any[]}>(`${root}/stock`),api<any>(`${root}/lookups`)])
-      if(version===loadVersion){stockRows.value=stock.items.filter(x=>current==='putaway'?Number(x.pendingPutawayQty)>0:Number(x.availableQty)>0&&!['PENDING_PUTAWAY','QUARANTINE'].includes(x.locationType));warehouses.value=lookups.warehouses}
+      if(version===loadVersion){stockRows.value=stock.items.filter(x=>current==='putaway'?Number(x.pendingPutawayQty)>0:Number(x.availableQty)>0&&!['PENDING_PUTAWAY','QUARANTINE'].includes(x.locationType));warehouses.value=lookups.warehouses;void goodsImages.load(stockRows.value.map(x=>x.goodsId))}
     }
   }catch(e){if(version===loadVersion)showToast(e instanceof Error?e.message:'任务读取失败')}
   finally{if(version===loadVersion){loading.value=false;refreshing.value=false}}
@@ -113,4 +117,5 @@ watch([()=>authUser?.value,()=>route.query.task,()=>route.query.stage],()=>{
 .purchase-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;overflow-wrap:anywhere}.purchase-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.purchase-heading strong{font-size:16px;min-width:0}.purchase-card p{font-size:13px;color:#747e8d;line-height:1.6}.purchase-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}.purchase-actions .van-button{min-height:44px;min-width:96px}
 .task-sheet{height:100%;overflow:auto;padding:20px 14px 30px}.task-sheet h2{font-size:19px;margin:3px 0 8px}.sheet-subtitle{font-size:13px;color:#87909e;margin:0 0 14px}.task-sheet .mobile-form-actions{position:sticky;bottom:0;padding:10px 0 max(12px,env(safe-area-inset-bottom));background:#f5f7fa}
 .native-select{width:100%;min-width:0;border:0;background:transparent;color:#323743;font:inherit;text-align:right;outline:none}
+.mobile-reference-task{display:flex;align-items:center;gap:10px;margin:10px 0;padding:10px;background:#fff;border-radius:10px}.mobile-reference-task span{overflow-wrap:anywhere;font-size:13px}
 </style>

@@ -9,6 +9,7 @@
         <el-button @click="load">刷新</el-button>
       </div>
       <el-table :data="items" v-loading="loading">
+        <el-table-column label="标准参考图" width="100"><template #default="{row}"><ProductReferenceImage :reference="skuImages.get(row.skuId)" :label="row.platformSku" /></template></el-table-column>
         <el-table-column prop="exceptionNo" label="异常单号" width="180" />
         <el-table-column prop="exceptionType" label="异常类型" width="190"><template #default="{row}">{{ exceptionTypeText(row.exceptionType) }}</template></el-table-column>
         <el-table-column prop="shopName" label="店铺" />
@@ -29,7 +30,7 @@
         <el-form-item label="店铺 SKU"><el-input :model-value="active?.platformSku" disabled /></el-form-item>
         <el-form-item label="内部 SKU">
           <el-select v-model="skuId" filterable placeholder="搜索内部 SKU" style="width: 100%">
-            <el-option v-for="sku in skus" :key="sku.id" :label="`${sku.internalSku} · ${sku.productName}`" :value="sku.id" />
+            <el-option v-for="sku in skus" :key="sku.id" :label="`${sku.internalSku} · ${sku.productName}`" :value="sku.id" style="height:64px"><div class="sku-option"><ProductReferenceImage :reference="skuImages.get(sku.id)" :label="sku.internalSku"/><span>{{ sku.internalSku }} · {{ sku.productName }}</span></div></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="默认订单模式"><el-select v-model="defaultOrderMode"><el-option label="JIT（即时履约）" value="JIT" /><el-option label="仓发（WAREHOUSE）" value="WAREHOUSE" /></el-select></el-form-item>
@@ -55,11 +56,14 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { formatChinaDateTime } from '../utils/chinaTime'
+import ProductReferenceImage from '../components/ProductReferenceImage.vue'
+import { useProductReferences } from '../utils/productReferences'
 
-type ExceptionItem = { id: number; exceptionNo: string; shopName: string; platformSku: string; title: string; status: string; createdAt: string; documentNo?:string; sourceDocumentId?:string; exceptionType:string; resolutionNote?:string }
+type ExceptionItem = { id: number; exceptionNo: string; shopName: string; platformSku: string; skuId?:number; title: string; status: string; createdAt: string; documentNo?:string; sourceDocumentId?:string; exceptionType:string; resolutionNote?:string }
 type Sku = { id: number; internalSku: string; productName: string }
 const items = ref<ExceptionItem[]>([])
 const skus = ref<Sku[]>([])
+const skuImages=useProductReferences('SKU')
 const status = ref('OPEN')
 const exceptionTypes:Record<string,string>={SKU_UNMATCHED:'订单 SKU 未匹配',FULFILLMENT_SKU_UNMATCHED:'履约 SKU 未匹配',PACKAGE_SHORTAGE:'包材库存不足',FULFILLMENT_PACKAGE_SHORTAGE:'履约包材库存不足',FULFILLMENT_STOCK_SHORTAGE:'履约商品缺货',FULFILLMENT_PLATFORM_CHANGED:'平台数据变更待核对'}
 function exceptionTypeText(value:string){return exceptionTypes[value]||'其他异常'}
@@ -83,6 +87,7 @@ async function load() {
   loading.value = true
   try {
     items.value = (await api<{ items: ExceptionItem[] }>(`/api/exceptions?status=${status.value}`)).items
+    void skuImages.load([...items.value.map(item=>item.skuId),...skus.value.map(sku=>sku.id)])
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '读取失败')
   } finally {
@@ -147,6 +152,7 @@ onMounted(async () => {
   await load()
   try {
     skus.value = (await api<{ items: Sku[] }>('/api/master/skus?page=1&pageSize=100')).items
+    void skuImages.load([...items.value.map(item=>item.skuId),...skus.value.map(sku=>sku.id)])
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : 'SKU 列表读取失败')
   }
@@ -156,4 +162,5 @@ onMounted(async () => {
 <style scoped>
 .resolve-summary { margin: 0 0 8px; color: var(--el-text-color-secondary); }
 .resolve-hint { margin: 0 0 16px; color: var(--el-color-warning-dark-2); font-size: 13px; line-height: 1.6; }
+.sku-option{display:flex;align-items:center;gap:10px}
 </style>

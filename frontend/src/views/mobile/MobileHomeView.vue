@@ -12,6 +12,12 @@
       <div><small>今日入库</small><strong>{{ summary.inboundToday }}</strong></div>
       <div><small>今日出库</small><strong>{{ summary.outboundToday }}</strong></div>
     </div>
+    <h3 class="mobile-section-heading">SKU 查询</h3>
+    <MobileBarcodeSearch v-model="skuQuery" placeholder="扫码或输入内部 SKU、名称、条码" @search="searchSku" />
+    <van-loading v-if="skuLoading" vertical>查询 SKU</van-loading>
+    <p v-if="skuError" class="mobile-field-note">{{ skuError }}</p>
+    <van-cell-group v-if="skuResults.length" inset class="mobile-section"><van-cell v-for="sku in skuResults" :key="sku.id" :title="`${sku.internalSku} · ${sku.productName}`" :label="`${sku.specification||'无规格'} · 条码 ${sku.barcode||'—'}`"><template #icon><ProductReferenceImage :reference="skuImages.get(sku.id)" :label="sku.internalSku" size="medium" /></template></van-cell></van-cell-group>
+    <van-empty v-else-if="skuSearched&&!skuLoading&&!skuError" description="没有匹配的 SKU" />
     <h3 class="mobile-section-heading">其他作业</h3>
     <div class="mobile-action-grid">
       <button v-if="canPurchase" class="mobile-action" @click="go('/mobile/goods-tasks?task=confirm')"><strong>采购待确认</strong><span>核对采购明细与确认数量</span></button>
@@ -24,12 +30,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, watch, reactive, type Ref } from 'vue'
+import { computed, inject, watch, reactive, ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api, type AuthUser } from '../../api'
+import MobileBarcodeSearch from './MobileBarcodeSearch.vue'
+import ProductReferenceImage from '../../components/ProductReferenceImage.vue'
+import { useProductReferences } from '../../utils/productReferences'
 const router=useRouter(),authUser=inject<Ref<AuthUser|undefined>>('mobileAuthUser')
 const summary=reactive<any>({pendingReceipt:0,pendingPutaway:0,pendingPicking:0,pendingHandoff:0,inboundToday:0,outboundToday:0,openExceptions:0})
+const skuQuery=ref(''),skuResults=ref<Array<{id:number;internalSku:string;productName:string;specification?:string;barcode?:string}>>([]),skuLoading=ref(false),skuSearched=ref(false),skuError=ref('')
+const skuImages=useProductReferences('SKU')
+async function searchSku(){const q=skuQuery.value.trim();if(!q)return;skuLoading.value=true;skuSearched.value=true;skuError.value='';try{skuResults.value=(await api<{items:typeof skuResults.value}>(`/api/mobile/skus?q=${encodeURIComponent(q)}`)).items;void skuImages.load(skuResults.value.map(s=>s.id))}catch(e){skuResults.value=[];skuError.value=e instanceof Error?e.message:'SKU 查询失败'}finally{skuLoading.value=false}}
 const permissions=computed(()=>authUser?.value?.permissions||[])
 const canReceive=computed(()=>permissions.value.includes('warehouse.goods.receive'))
 const canPurchase=computed(()=>permissions.value.includes('warehouse.goods.purchase'))

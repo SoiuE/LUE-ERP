@@ -53,7 +53,36 @@ services:
     volumes:
       - minio_data:/data
 
+  image-search:
+    build:
+      context: ../image-search
+    container_name: lue-erp-image-search
+    restart: unless-stopped
+    environment:
+      IMAGE_SEARCH_INTERNAL_TOKEN: ${LUE_IMAGE_SEARCH_INTERNAL_TOKEN:?LUE_IMAGE_SEARCH_INTERNAL_TOKEN must be set}
+      IMAGE_SEARCH_MODEL: ${LUE_IMAGE_SEARCH_MODEL:-ViT-B-32}
+      IMAGE_SEARCH_PRETRAINED: ${LUE_IMAGE_SEARCH_PRETRAINED:-laion2b_s34b_b79k}
+      IMAGE_SEARCH_INDEX_PATH: /data/image-index.sqlite
+      IMAGE_SEARCH_BACKUP_DIR: /backups
+      IMAGE_SEARCH_MAX_BYTES: ${LUE_IMAGE_SEARCH_MAX_BYTES:-10485760}
+      IMAGE_SEARCH_MAX_PIXELS: ${LUE_IMAGE_SEARCH_MAX_PIXELS:-20000000}
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - image_search_data:/data
+      - image_search_models:/models
+      - image_search_backups:/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
 volumes:
   mysql_data:
   redis_data:
   minio_data:
+  image_search_data:
+  image_search_models:
+  image_search_backups:

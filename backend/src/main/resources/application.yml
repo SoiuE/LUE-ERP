@@ -47,6 +47,34 @@ logging:
     com.lue.erp: debug
 
 lue:
+  images:
+    storage:
+      type: ${LUE_IMAGE_STORAGE_TYPE:none}
+      endpoint: ${LUE_MINIO_ENDPOINT:http://localhost:9000}
+      bucket: ${LUE_MINIO_BUCKET:lue-erp-images}
+      access-key: ${LUE_MINIO_ACCESS_KEY:}
+      secret-key: ${LUE_MINIO_SECRET_KEY:}
+      region: ${LUE_MINIO_REGION:us-east-1}
+    max-file-size: ${LUE_IMAGE_MAX_FILE_SIZE:10485760}
+    max-pixels: ${LUE_IMAGE_MAX_PIXELS:20000000}
+    max-dimension: ${LUE_IMAGE_MAX_DIMENSION:8000}
+    archive:
+      connect-timeout-ms: ${LUE_IMAGE_ARCHIVE_CONNECT_TIMEOUT_MS:3000}
+      read-timeout-ms: ${LUE_IMAGE_ARCHIVE_READ_TIMEOUT_MS:7000}
+      call-timeout-ms: ${LUE_IMAGE_ARCHIVE_CALL_TIMEOUT_MS:12000}
+      max-file-size: ${LUE_IMAGE_ARCHIVE_MAX_FILE_SIZE:10485760}
+      max-redirects: ${LUE_IMAGE_ARCHIVE_MAX_REDIRECTS:3}
+      worker-count: ${LUE_IMAGE_ARCHIVE_WORKERS:2}
+      queue-capacity: ${LUE_IMAGE_ARCHIVE_QUEUE_CAPACITY:20}
+      poll-delay-ms: ${LUE_IMAGE_ARCHIVE_POLL_DELAY_MS:3000}
+    search:
+      url: ${LUE_IMAGE_SEARCH_URL:http://127.0.0.1:8090}
+      internal-token: ${LUE_IMAGE_SEARCH_INTERNAL_TOKEN:}
+      connect-timeout-ms: ${LUE_IMAGE_SEARCH_CONNECT_TIMEOUT_MS:2000}
+      read-timeout-ms: ${LUE_IMAGE_SEARCH_READ_TIMEOUT_MS:15000}
+      index-poll-delay-ms: ${LUE_IMAGE_INDEX_POLL_DELAY_MS:3000}
+      minimum-score: ${LUE_IMAGE_SEARCH_MINIMUM_SCORE:0.20}
+      include-packaging: ${LUE_IMAGE_SEARCH_INCLUDE_PACKAGING:false}
   legacy-migration:
     rehearsal-enabled: ${LUE_LEGACY_MIGRATION_REHEARSAL_ENABLED:false}
   auth:

@@ -46,6 +46,17 @@ public class MobileWarehouseController {
     @GetMapping("/packages")
     public ApiResponse<Map<String,Object>> packages(@RequestParam(required=false) String q,@AuthenticationPrincipal AuthUser user){mobile(user);return warehouse.packages(1,100,q,user);}
 
+    @GetMapping("/skus")
+    public ApiResponse<Map<String,Object>> skus(@RequestParam(required=false) String q,@AuthenticationPrincipal AuthUser user) {
+        mobile(user);
+        String term = Objects.toString(q, "").trim();
+        if (term.length() > 100) throw new IllegalArgumentException("搜索词最多 100 个字符");
+        if (term.isBlank()) return ApiResponse.ok(Map.of("items", List.of()));
+        String like = "%" + term + "%";
+        List<Map<String,Object>> rows = db.queryForList("SELECT s.id,s.internal_sku internalSku,s.product_name productName,s.specification,s.barcode,s.status FROM skus s WHERE s.is_deleted=FALSE AND (s.internal_sku LIKE ? OR s.product_name LIKE ? OR s.barcode LIKE ?) ORDER BY s.internal_sku LIMIT 20", like, like, like);
+        return ApiResponse.ok(Map.of("items", rows));
+    }
+
     @PostMapping("/packages/operations") @Transactional
     public ApiResponse<Map<String,Object>> packages(@RequestBody Map<String,Object>body,@AuthenticationPrincipal AuthUser user,HttpServletRequest request){mobile(user);ApiResponse<Map<String,Object>> result=warehouse.packageOperation(body,user);return audited("package."+Objects.toString(body.get("operation"),"operation").toLowerCase(Locale.ROOT),"package_material",Objects.toString(body.get("materialId"),""),body,user,request,result.data());}
 

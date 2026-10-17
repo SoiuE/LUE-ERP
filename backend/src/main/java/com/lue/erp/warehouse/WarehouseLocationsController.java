@@ -32,7 +32,7 @@ public class WarehouseLocationsController {
     @GetMapping("/goods")
     public ApiResponse<Map<String,Object>> goods(@AuthenticationPrincipal AuthUser user) {
         lookupView(user);
-        return ApiResponse.ok(Map.of("goods",db.queryForList("SELECT id,goods_code goodsCode,goods_name goodsName,unit,status FROM warehouse_goods WHERE is_deleted=FALSE ORDER BY goods_code LIMIT 1000")));
+        return ApiResponse.ok(Map.of("goods",db.queryForList("SELECT id,goods_code goodsCode,goods_name goodsName,specification,unit,status FROM warehouse_goods WHERE is_deleted=FALSE ORDER BY goods_code LIMIT 1000")));
     }
 
     @GetMapping("/nodes")

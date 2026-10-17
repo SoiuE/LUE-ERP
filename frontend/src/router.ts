@@ -19,6 +19,8 @@ import MobileGoodsTasksView from './views/mobile/MobileGoodsTasksView.vue'
 import WarehouseGoodsView from './views/WarehouseGoodsView.vue'
 import SkuProductDetailsView from './views/SkuProductDetailsView.vue'
 import WarehouseLocationsView from './views/WarehouseLocationsView.vue'
+import ImageLibraryView from './views/ImageLibraryView.vue'
+import ImageSearchView from './views/ImageSearchView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +35,8 @@ const router = createRouter({
       { path: 'skus', component: MasterDataView, props: { kind: 'skus' }, meta: { title: 'SKU 中心', permission: 'master.skus.view' } },
       { path: 'skus/:skuId/details', component: SkuProductDetailsView, meta: { title: '销售 SKU 详情', permission: 'master.skus.view' } },
       { path: 'warehouse-goods', component: WarehouseGoodsView, meta: { title: '仓库货品', permission: 'master.goods.view' } },
+      { path: 'images', component: ImageLibraryView, meta: { title: '图片库', permission: 'menu.images' } },
+      { path: 'image-search', component: ImageSearchView, meta: { title: '以图搜商品', permission: 'menu.image-search' } },
       { path: 'warehouse-locations', component: WarehouseLocationsView, meta: { title: '仓库库位', permission: 'warehouse.locations.view' } },
       { path: 'location-inventory', component: WarehouseLocationsView, props: { initialTab: 'stock' }, meta: { title: '货品库位库存', permission: 'warehouse.location_stock.view' } },
       { path: 'suppliers', component: MasterDataView, props: { kind: 'suppliers' }, meta: { title: '供应商档案', permission: 'master.suppliers.view' } },

@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { DataBoard, User, Key, Document, Shop, Goods, Box, Connection, Upload, Tickets, Coin, Files, Iphone, Van, TakeawayBox, Operation, Wallet, Setting } from '@element-plus/icons-vue'
+import { DataBoard, User, Key, Document, Shop, Goods, Box, Connection, Upload, Tickets, Coin, Files, Iphone, Van, TakeawayBox, Operation, Wallet, Setting, Picture } from '@element-plus/icons-vue'
 import { api, clearToken, getToken, type AuthUser } from '../api'
 
 const route = useRoute(); const router = useRouter()
@@ -33,6 +33,8 @@ const groups = [
   { id:'products', title:'商品与映射', icon:Goods, items:[
     {title:'内部销售 SKU 与组成清单',path:'/skus',permission:'master.skus.view',icon:Goods},
     {title:'仓库货品',path:'/warehouse-goods',permission:'master.goods.view',icon:TakeawayBox},
+    {title:'图片库',path:'/images',permission:'menu.images',icon:Picture},
+    {title:'以图搜商品',path:'/image-search',permission:'menu.image-search',icon:Picture},
     {title:'店铺 SKU 映射',path:'/mappings',permission:'master.mappings.view',icon:Connection},
     {title:'店铺档案',path:'/shops',permission:'master.shops.view',icon:Shop},
   ] },

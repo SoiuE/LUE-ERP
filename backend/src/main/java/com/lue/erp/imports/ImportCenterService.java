@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.time.LocalDate;
@@ -162,7 +163,7 @@ public class ImportCenterService {
                 List<Map<String,Object>> rawRows=jdbc.queryForList("SELECT id,source_row_number AS rowNumber,normalized_data AS rawData FROM raw_import_rows WHERE batch_id=? AND row_status='VALID' AND is_deleted=FALSE ORDER BY source_row_number",id);
                 for(Map<String,Object> raw:rawRows) {
                     Map<String,Object> values=parseRaw(raw.get("rawData"));
-                    Long recordId="sku".equals(batch.get("importType"))?writeSku(values,(boolean)batch.get("forceReimport")):writeMapping(values,(boolean)batch.get("forceReimport"));
+                    Long recordId="sku".equals(batch.get("importType"))?writeSku(values,(boolean)batch.get("forceReimport"),actor,request):writeMapping(values,(boolean)batch.get("forceReimport"));
                     jdbc.update("UPDATE raw_import_rows SET row_status='IMPORTED',imported_record_id=? WHERE id=?",recordId,raw.get("id"));
                 }
                 jdbc.update("UPDATE import_batches SET status='SUCCESS',imported_rows=?,error_message=NULL WHERE id=?",rawRows.size(),id);
@@ -213,6 +214,7 @@ public class ImportCenterService {
         if(code!=null){v.put("internal_sku",code);if(code.length()>100)errors.add("内部 SKU 最长 100 个字符");}
         Map<String,Integer> textLimits=Map.ofEntries(Map.entry("product_name",255),Map.entry("spu",100),Map.entry("name_zh",255),Map.entry("name_en",255),Map.entry("specification",255),Map.entry("color",100),Map.entry("size",100),Map.entry("barcode",100),Map.entry("category",160),Map.entry("image_url",1000),Map.entry("note",1000));
         for(Map.Entry<String,Integer> limit:textLimits.entrySet())if(v.get(limit.getKey())!=null&&str(v.get(limit.getKey())).length()>limit.getValue())errors.add(HEADER_LABELS.get("sku").get(limit.getKey())+"最长 "+limit.getValue()+" 个字符");
+        if(v.get("image_url")!=null&&!str(v.get("image_url")).isBlank()&&!validExternalImageUrl(str(v.get("image_url"))))errors.add("商品图片链接必须为有效的 HTTP 或 HTTPS URL，且不能包含用户名或密码");
         if(code!=null&&!force&&count("SELECT COUNT(*) FROM skus WHERE internal_sku=?",code)>0)errors.add("内部 SKU 已存在；如需覆盖请使用强制重导入");
         if(v.get("status")!=null){String status=str(v.get("status")).toUpperCase(Locale.ROOT);v.put("status",status);if(!Set.of("ACTIVE","INACTIVE").contains(status))errors.add("status 只能为 ACTIVE 或 INACTIVE");}
         if(v.get("supplier_code")!=null&&count("SELECT COUNT(*) FROM suppliers WHERE supplier_code=? AND status='ACTIVE' AND is_deleted=FALSE",str(v.get("supplier_code")).toUpperCase(Locale.ROOT))==0)errors.add("供应商编码不存在或已停用");
@@ -241,7 +243,7 @@ public class ImportCenterService {
         if(v.get("shop_identifier")!=null&&v.get("platform_sku")!=null&&!force&&count("SELECT COUNT(*) FROM shop_sku_mappings m JOIN shops sh ON sh.id=m.shop_id WHERE sh.shop_identifier=? AND m.platform_sku=? AND m.status='ACTIVE' AND m.is_deleted=FALSE",str(v.get("shop_identifier")),str(v.get("platform_sku")))>0)errors.add("该店铺的平台 SKU 已有有效映射；如需更新请使用强制重导入");
     }
 
-    private Long writeSku(Map<String,Object> v,boolean force) {
+    private Long writeSku(Map<String,Object> v,boolean force,AuthUser actor,HttpServletRequest request) {
         String code=str(v.get("internal_sku"));Long id=jdbc.query("SELECT id FROM skus WHERE internal_sku=?",rs->rs.next()?rs.getLong(1):null,code);
         if(id!=null&&!force)throw new IllegalArgumentException("内部 SKU 已存在："+code);
         Map<String,Object> values=new LinkedHashMap<>();for(String field:SKU_FIELDS)if(v.containsKey(field))values.put(field,v.get(field));
@@ -250,7 +252,27 @@ public class ImportCenterService {
         values.put("supplier_id",supplierId);
         if(id==null){List<String> cols=new ArrayList<>(values.keySet());String placeholders=String.join(",",cols.stream().map(c->isJsonField(c)?"CAST(? AS JSON)":"?").toList());String sql="INSERT INTO skus(internal_sku,"+String.join(",",cols)+") VALUES (?,"+placeholders+")";jdbc.update(sql,prepend(code,cols.stream().map(values::get).toArray()));id=jdbc.queryForObject("SELECT LAST_INSERT_ID()",Long.class);}
         else {List<String> cols=new ArrayList<>(values.keySet());String sql="UPDATE skus SET "+String.join(",",cols.stream().map(c->c+(isJsonField(c)?"=CAST(? AS JSON)":"=?")).toList())+",is_deleted=FALSE WHERE id=?";List<Object> args=new ArrayList<>();cols.forEach(c->args.add(values.get(c)));args.add(id);jdbc.update(sql,args.toArray());}
+        String imageUrl=str(v.get("image_url"));
+        if(imageUrl!=null&&!imageUrl.isBlank())linkImportedImage(id,imageUrl,actor,request);
         return id;
+    }
+
+    private void linkImportedImage(long skuId,String url,AuthUser actor,HttpServletRequest request) {
+        jdbc.query("SELECT id FROM skus WHERE id=? FOR UPDATE",rs->{if(!rs.next())throw new IllegalArgumentException("SKU 导入目标不存在");return rs.getLong(1);},skuId);
+        Long assetId=jdbc.query("SELECT id FROM image_assets WHERE source_type='EXTERNAL_URL' AND external_url=? AND status='ACTIVE' ORDER BY id LIMIT 1",rs->rs.next()?rs.getLong(1):null,url);
+        if(assetId==null){jdbc.update("INSERT INTO image_assets(source_type,external_url,created_by) VALUES ('EXTERNAL_URL',?,?)",url,actor.id());assetId=jdbc.queryForObject("SELECT LAST_INSERT_ID()",Long.class);}
+        Long finalAssetId=assetId;
+        Long linkId=jdbc.query("SELECT id FROM image_asset_links WHERE image_asset_id=? AND object_type='SKU' AND object_id=? AND status='ACTIVE'",rs->rs.next()?rs.getLong(1):null,assetId,skuId);
+        jdbc.update("UPDATE image_asset_links SET is_primary=FALSE WHERE object_type='SKU' AND object_id=? AND status='ACTIVE' AND is_primary=TRUE",skuId);
+        if(linkId==null){jdbc.update("INSERT INTO image_asset_links(image_asset_id,object_type,object_id,purpose,is_primary,sort_order,status,created_by) VALUES (?,'SKU',?,'MAIN_IMAGE',TRUE,0,'ACTIVE',?)",assetId,skuId,actor.id());linkId=jdbc.queryForObject("SELECT LAST_INSERT_ID()",Long.class);}
+        else jdbc.update("UPDATE image_asset_links SET is_primary=TRUE,purpose='MAIN_IMAGE' WHERE id=?",linkId);
+        try { jdbc.update("INSERT INTO operation_logs(user_id,username,action,resource_type,resource_id,detail,ip_address,success) VALUES (?,?,?,'image_asset_link',?,CAST(? AS JSON),?,TRUE)",actor.id(),actor.username(),"image.import_link",String.valueOf(linkId),mapper.writeValueAsString(Map.of("assetId",finalAssetId,"objectType","SKU","objectId",skuId,"sourceType","EXTERNAL_URL")),request.getRemoteAddr()); }
+        catch(JsonProcessingException ex){throw new IllegalStateException("图片导入审计写入失败");}
+    }
+
+    private static boolean validExternalImageUrl(String value) {
+        try { URI uri=URI.create(value.trim());return ("http".equalsIgnoreCase(uri.getScheme())||"https".equalsIgnoreCase(uri.getScheme()))&&uri.getHost()!=null&&!uri.getHost().isBlank()&&uri.getUserInfo()==null&&value.length()<=2048; }
+        catch(Exception ex){return false;}
     }
 
     private Long writeMapping(Map<String,Object> v,boolean force) {

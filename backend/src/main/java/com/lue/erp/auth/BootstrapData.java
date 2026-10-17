@@ -26,6 +26,10 @@ public class BootstrapData implements CommandLineRunner {
         permission("master.suppliers.view", "供应商", "MENU", "/suppliers");
         permission("master.materials.view", "包材档案", "MENU", "/materials");
         permission("master.goods.view", "仓库货品档案", "MENU", "/warehouse-goods");
+        permission("menu.images", "商品图片库", "MENU", "/images");
+        permission("button.images.manage", "维护商品图片", "BUTTON", null);
+        permission("menu.image-search", "以图搜商品", "MENU", "/image-search");
+        permission("button.image-search.manage", "管理图片搜索索引", "BUTTON", null);
         permission("master.compositions.view", "销售 SKU 组成清单", "API", null);
         permission("button.goods.manage", "维护仓库货品", "BUTTON", null);
         permission("button.compositions.manage", "维护组成清单版本", "BUTTON", null);
@@ -50,6 +54,10 @@ public class BootstrapData implements CommandLineRunner {
         grant("ADMIN", "menu.dashboard", "menu.users", "menu.roles", "menu.logs", "button.users.manage",
             "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.goods.view", "master.compositions.view", "button.goods.manage", "button.compositions.manage", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
         grant("OPERATOR", "menu.dashboard", "master.shops.view", "master.skus.view", "master.suppliers.view", "master.materials.view", "master.goods.view", "master.compositions.view", "button.goods.manage", "button.compositions.manage", "master.mappings.view", "master.data.manage", "menu.imports", "button.imports.manage", "menu.purchases", "menu.package-stocks", "menu.mobile", "menu.profits", "button.profits.import", "button.profits.recalculate");
+        grant("ADMIN", "menu.images", "button.images.manage");
+        grant("OPERATOR", "menu.images", "button.images.manage");
+        grant("ADMIN", "menu.image-search", "button.image-search.manage");
+        grant("OPERATOR", "menu.image-search", "button.image-search.manage");
         grant("VIEWER", "menu.dashboard", "menu.profits");
         grant("WAREHOUSE", "menu.mobile");
         grant("ADMIN", "warehouse.locations.view", "button.locations.manage", "warehouse.location_stock.view");

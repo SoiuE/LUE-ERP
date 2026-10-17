@@ -18,7 +18,8 @@
         <article v-for="line in purchase.items" :id="`mobile-receipt-${line.id}`" :key="line.id" class="line-card" :class="{complete:mode==='receipt'&&!remaining(line)}">
           <div class="line-heading">
             <van-checkbox v-if="mode==='receipt'" v-model="line.selected" :disabled="saving||!remaining(line)" :aria-label="`选择${line.goodsName}`" />
-            <div class="goods-title"><strong>{{ line.goodsName }}</strong><small>{{ line.goodsCode }} · {{ line.unit||'—' }}</small></div>
+            <ProductReferenceImage :reference="goodsImages.get(line.goodsId)" :label="line.goodsCode" />
+            <div class="goods-title"><strong>{{ line.goodsName }}</strong><small>{{ line.goodsCode }} · {{ line.specification||'无规格' }} · {{ line.unit||'—' }}</small></div>
             <button v-if="mode==='receipt'&&remaining(line)" :aria-expanded="line.expanded" @click="line.expanded=!line.expanded">{{ line.expanded?'收起':'展开' }}</button>
             <van-tag v-if="mode==='receipt'&&!remaining(line)" type="success">已收齐</van-tag>
           </div>
@@ -74,6 +75,8 @@
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 import { showConfirmDialog, showLoadingToast, showToast } from 'vant'
 import { api, type AuthUser } from '../../api'
+import ProductReferenceImage from '../../components/ProductReferenceImage.vue'
+import { useProductReferences } from '../../utils/productReferences'
 import MobilePurchaseNumbers from './MobilePurchaseNumbers.vue'
 import LocationDisplay from '../../components/LocationDisplay.vue'
 import { locationLabel, locationSearch } from '../../utils/location'
@@ -82,6 +85,7 @@ type Mode='detail'|'confirm'|'receipt'
 type ReviewLine={itemId:number;goodsCode:string;goodsName:string;locationId:number;quantity:number;actualUnitPrice:number;overReceiptReason:string;note:string}
 const emit=defineEmits<{completed:[]}>(),user=inject<Ref<AuthUser|undefined>>('mobileAuthUser'),root='/api/goods-procurement'
 const visible=ref(false),mode=ref<Mode>('detail'),purchase=ref<any>(),locations=ref<any[]>([]),opening=ref(false),saving=ref(false),body=ref<HTMLElement>()
+const goodsImages=useProductReferences('WAREHOUSE_GOODS')
 const pickerOpen=ref(false),pickerLine=ref<any>(),locationQuery=ref(''),reviewOpen=ref(false),reviewAll=ref(false),reviewLines=ref<ReviewLine[]>([])
 const canReceive=computed(()=>user?.value?.permissions.includes('warehouse.goods.receive')===true),canPurchase=computed(()=>user?.value?.permissions.includes('warehouse.goods.purchase')===true)
 const receivable=computed<any[]>(()=>purchase.value?.items.filter((line:any)=>remaining(line)>0)||[])
@@ -121,6 +125,7 @@ async function open(id:number,nextMode:Mode){
   opening.value=true;const toast=showLoadingToast({message:'读取采购明细',duration:0,forbidClick:true})
   try{
     const detail=await api<any>(`${root}/purchases/${id}`)
+    void goodsImages.load(detail.items.map((line:any)=>line.goodsId))
     if(nextMode==='receipt'&&!['CONFIRMED','PARTIALLY_RECEIVED'].includes(detail.status))throw new Error('采购单状态已变化，请刷新列表')
     if(nextMode==='confirm'&&detail.status!=='DRAFT')throw new Error('该采购单已确认，请刷新列表')
     if(nextMode==='receipt')locations.value=(await api<{items:any[]}>(`${root}/receipt-locations?warehouseId=${detail.warehouseId}`)).items

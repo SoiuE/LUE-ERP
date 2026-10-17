@@ -7,6 +7,7 @@
     <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" />
     <el-tabs v-if="sku" v-model="tab">
       <el-tab-pane label="销售资料" name="sales">
+        <div class="sku-reference"><ProductReferenceImage :reference="skuImages.get(sku.id)" :label="sku.internalSku" size="medium" /><span>{{ sku.internalSku }} · {{ sku.productName }} · {{ sku.specification || '无规格' }}</span></div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="内部销售 SKU">{{ sku.internalSku }}</el-descriptions-item>
           <el-descriptions-item label="名称">{{ sku.productName }}</el-descriptions-item>
@@ -15,6 +16,9 @@
           <el-descriptions-item label="状态">{{ sku.status==='ACTIVE'?'启用':'停用' }}</el-descriptions-item>
           <el-descriptions-item label="备注">{{ sku.note || '—' }}</el-descriptions-item>
         </el-descriptions>
+      </el-tab-pane>
+      <el-tab-pane v-if="has('menu.images')" label="商品图片" name="images">
+        <ImageManager object-type="SKU" :object-id="sku.id" :can-manage="has('button.images.manage')" />
       </el-tab-pane>
       <el-tab-pane v-if="canViewMappings" label="店铺映射" name="mappings">
         <div class="subhead"><p>平台 SKU 归集到当前内部销售 SKU。</p><el-button v-if="canMap" type="primary" :disabled="sku.status!=='ACTIVE'" @click="openMapping()">新增映射</el-button></div>
@@ -47,6 +51,7 @@
           <p class="muted">创建：{{ formatChinaDateTime(version.createdAt) }} · 操作人 ID {{ version.createdBy }}</p>
           <p v-if="version.deactivationReason" class="muted">停用：{{ formatChinaDateTime(version.deactivatedAt) }} · {{ version.deactivationReason }}</p>
           <el-table :data="version.items" size="small">
+            <el-table-column label="参考图" width="72"><template #default="s"><ProductReferenceImage :reference="goodsImages.get(s.row.warehouseGoodsId)" :label="s.row.goodsCode" /></template></el-table-column>
             <el-table-column label="组成关系" min-width="190"><template #default="s">{{ parentLabel(version,s.row) }}</template></el-table-column>
             <el-table-column prop="goodsCode" label="货品编码"/><el-table-column prop="goodsName" label="货品名称"/>
             <el-table-column prop="quantity" label="单件用量"/><el-table-column prop="unit" label="单位" width="80"/><el-table-column prop="note" label="说明"/>
@@ -67,7 +72,7 @@
       <p class="muted">每行用量均为每件销售 SKU 所需数量。替代件为可选关系，不自动替换；启用版本的日期区间不能重叠。</p>
       <div v-for="(row,index) in versionForm.items" :key="row.key" class="component-row">
         <span class="row-index">{{ index+1 }}</span>
-        <el-select v-model="row.warehouseGoodsId" filterable placeholder="选择启用中的仓库货品" class="goods-select"><el-option v-for="g in goods" :key="g.id" :label="`${g.goodsCode} · ${g.goodsName} (${g.unit})`" :value="g.id"/></el-select>
+        <el-select v-model="row.warehouseGoodsId" filterable placeholder="选择启用中的仓库货品" class="goods-select"><el-option v-for="g in goods" :key="g.id" :label="`${g.goodsCode} · ${g.goodsName} (${g.unit})`" :value="g.id" style="height:64px"><div class="goods-option"><ProductReferenceImage :reference="goodsImages.get(g.id)" :label="g.goodsCode"/><span>{{ g.goodsCode }} · {{ g.goodsName }}<small>{{ g.specification || '无规格' }} · {{ g.unit }}</small></span></div></el-option></el-select>
         <el-input-number v-model="row.quantity" :min="0.0001" :precision="4"/>
         <el-select v-if="row.parentKey" v-model="row.parentKey" placeholder="选择被替代的主要货品" class="relation-select"><el-option v-for="main in primaryRows" :key="main.key" :label="goodsLabel(main.warehouseGoodsId)" :value="main.key"/></el-select><span v-else class="relation-select">主要货品</span>
         <el-input v-model="row.note" placeholder="说明" maxlength="500" class="note-input"/>
@@ -95,9 +100,12 @@ import {computed,reactive,ref,watch} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {ElMessage,ElMessageBox} from 'element-plus'
 import {api,type AuthUser} from '../api'
+import ImageManager from '../components/ImageManager.vue'
+import ProductReferenceImage from '../components/ProductReferenceImage.vue'
+import { useProductReferences } from '../utils/productReferences'
 import {formatChinaDateTime} from '../utils/chinaTime'
 
-type Goods={id:number;goodsCode:string;goodsName:string;unit:string}
+type Goods={id:number;goodsCode:string;goodsName:string;specification?:string;unit:string}
 type Line={id:number;goodsCode:string;goodsName:string;warehouseGoodsId:number;quantity:number;unit:string;substituteForItemId:number|null;note?:string}
 type Version={id:number;versionNo:number;status:string;effectiveFrom?:string;effectiveTo?:string;changeReason:string;createdAt:string;createdBy:number;deactivationReason?:string;deactivatedAt?:string;items:Line[]}
 type Mapping={id:number;shopId:number;shopName:string;shopIdentifier:string;skuId:number;platformSku:string;platformProductId?:string;platformProductName?:string;defaultOrderMode:string;status:string}
@@ -112,6 +120,7 @@ const canViewMappings=computed(()=>has('master.mappings.view')),canViewCompositi
 const canCompose=computed(()=>canViewCompositions.value&&has('button.compositions.manage')&&has('master.goods.view'))
 const canMap=computed(()=>canViewMappings.value&&has('master.data.manage'))
 const sku=ref<Sku>(),tab=ref('sales'),versions=ref<Version[]>([]),goods=ref<Goods[]>([]),shops=ref<Shop[]>([])
+const skuImages=useProductReferences('SKU'),goodsImages=useProductReferences('WAREHOUSE_GOODS')
 const loading=ref(false),loadError=ref(''),saving=ref(false),versionDialog=ref(false),mappingDialog=ref(false),mappingEditing=ref<Mapping>()
 const previewQty=ref(1),previewDate=ref(''),previewLoading=ref(false),previewResult=ref<Preview>()
 const versionForm=reactive({effectiveFrom:'',effectiveTo:'',status:'ACTIVE',changeReason:'',items:[] as ComponentRow[]})
@@ -121,12 +130,12 @@ let nextKey=0
 function newComponent():ComponentRow{return {key:String(++nextKey),warehouseGoodsId:undefined,quantity:1,parentKey:null,note:''}}
 function message(e:unknown){return e instanceof Error?e.message:'操作失败，请重试'}
 watch([skuId,()=>props.user],async()=>{if(!props.user)return;loading.value=true;loadError.value='';sku.value=undefined;versions.value=[];previewResult.value=undefined;versionDialog.value=false;mappingDialog.value=false;try{await loadDetails();if(canViewCompositions.value)await loadVersions()}catch(e){loadError.value=message(e)}finally{loading.value=false}},{immediate:true})
-async function loadDetails(){sku.value=await api<Sku>(`/api/skus/${skuId.value}/product-details`)}
-async function loadVersions(){versions.value=(await api<{versions:Version[]}>(`/api/skus/${skuId.value}/compositions`)).versions}
+async function loadDetails(){sku.value=await api<Sku>(`/api/skus/${skuId.value}/product-details`);void skuImages.load([skuId.value])}
+async function loadVersions(){versions.value=(await api<{versions:Version[]}>(`/api/skus/${skuId.value}/compositions`)).versions;void goodsImages.load(versions.value.flatMap(v=>v.items.map(item=>item.warehouseGoodsId)))}
 async function allPages<T>(path:string):Promise<T[]>{const first=await api<{items:T[];total:number}>(`${path}&page=1&pageSize=100`);const result=[...first.items];for(let p=2;p<=Math.ceil(first.total/100);p++)result.push(...(await api<{items:T[]}>(`${path}&page=${p}&pageSize=100`)).items);return result}
 function goodsLabel(id?:number){const g=goods.value.find(x=>x.id===id);return g?`${g.goodsCode} · ${g.goodsName}`:'尚未选择主要货品'}
 function parentLabel(v:Version,line:Line){return line.substituteForItemId?`替代 ${v.items.find(x=>x.id===line.substituteForItemId)?.goodsCode||line.substituteForItemId}`:'主要货品'}
-async function openVersion(source?:Version){try{goods.value=await allPages<Goods>('/api/warehouse-goods?status=ACTIVE');const rows=source?source.items.map(line=>({...newComponent(),warehouseGoodsId:line.warehouseGoodsId,quantity:Number(line.quantity),note:line.note||''})):[newComponent()];if(source)source.items.forEach((line,i)=>{if(line.substituteForItemId)rows[i].parentKey=rows[source.items.findIndex(x=>x.id===line.substituteForItemId)]?.key||null});Object.assign(versionForm,{effectiveFrom:'',effectiveTo:'',status:'ACTIVE',changeReason:'',items:rows});versionDialog.value=true}catch(e){ElMessage.error(message(e))}}
+async function openVersion(source?:Version){try{goods.value=await allPages<Goods>('/api/warehouse-goods?status=ACTIVE');void goodsImages.load(goods.value.map(g=>g.id));const rows=source?source.items.map(line=>({...newComponent(),warehouseGoodsId:line.warehouseGoodsId,quantity:Number(line.quantity),note:line.note||''})):[newComponent()];if(source)source.items.forEach((line,i)=>{if(line.substituteForItemId)rows[i].parentKey=rows[source.items.findIndex(x=>x.id===line.substituteForItemId)]?.key||null});Object.assign(versionForm,{effectiveFrom:'',effectiveTo:'',status:'ACTIVE',changeReason:'',items:rows});versionDialog.value=true}catch(e){ElMessage.error(message(e))}}
 function addSubstitute(){if(!primaryRows.value.length){ElMessage.warning('请先添加主要货品');return}versionForm.items.push({...newComponent(),parentKey:primaryRows.value[0].key})}
 function removeComponent(row:ComponentRow){if(versionForm.items.some(x=>x.parentKey===row.key)){ElMessage.warning('请先移除或重新关联该货品的替代件');return}versionForm.items=versionForm.items.filter(x=>x.key!==row.key)}
 async function saveVersion(){
@@ -147,5 +156,6 @@ async function deactivateMapping(m:Mapping){try{await ElMessageBox.confirm(`停�
 .version-head>div,.preview-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .preview-controls{margin:16px 0}.version-card{margin:14px 0;padding:14px}.muted{color:#737b8b;font-size:12px}
 .component-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}.goods-select{flex:2;min-width:180px}.relation-select{width:170px}.note-input{flex:1}.row-index{width:20px}
+.sku-reference,.goods-option{display:flex;align-items:center;gap:12px}.sku-reference{margin:0 0 16px}.goods-option span{white-space:normal;line-height:1.3}.goods-option small{display:block;color:#909399}
 @media(max-width:800px){.component-row,.subhead,.version-head{flex-wrap:wrap}.goods-select{min-width:230px}}
 </style>

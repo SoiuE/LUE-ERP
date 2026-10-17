@@ -35,7 +35,7 @@ public class GoodsProcurementController {
         view(user);
         return ApiResponse.ok(Map.of(
             "suppliers",db.queryForList("SELECT id,supplier_name supplierName FROM suppliers WHERE status='ACTIVE' AND is_deleted=FALSE ORDER BY supplier_name"),
-            "goods",db.queryForList("SELECT id,goods_code goodsCode,goods_name goodsName,reference_purchase_price referencePrice FROM warehouse_goods WHERE status='ACTIVE' AND is_deleted=FALSE ORDER BY goods_code LIMIT 1000"),
+            "goods",db.queryForList("SELECT id,goods_code goodsCode,goods_name goodsName,specification,unit,reference_purchase_price referencePrice FROM warehouse_goods WHERE status='ACTIVE' AND is_deleted=FALSE ORDER BY goods_code LIMIT 1000"),
             "warehouses",db.queryForList("SELECT id,warehouse_code warehouseCode,warehouse_name warehouseName FROM warehouses WHERE status='ACTIVE' ORDER BY warehouse_code")));
     }
 
@@ -100,7 +100,7 @@ public class GoodsProcurementController {
     public ApiResponse<Map<String,Object>> purchase(@PathVariable long id,@AuthenticationPrincipal AuthUser user) {
         view(user);
         Map<String,Object> result=db.queryForMap("SELECT p.id,p.po_no poNo,p.status,p.warehouse_id warehouseId,w.warehouse_name warehouseName,p.tracking_no trackingNo,p.order_no orderNo,p.expected_arrival_date expectedArrivalDate,p.note,p.created_at createdAt,s.supplier_name supplierName FROM purchase_orders p JOIN suppliers s ON s.id=p.supplier_id LEFT JOIN warehouses w ON w.id=p.warehouse_id WHERE p.id=?",id);
-        List<Map<String,Object>> lines=db.queryForList("SELECT i.id,i.warehouse_goods_id goodsId,g.goods_code goodsCode,g.goods_name goodsName,g.unit,i.ordered_qty orderedQty,i.confirmed_qty confirmedQty,i.received_qty receivedQty,i.unit_price suggestedPrice,i.total_amount totalAmount FROM purchase_order_items i JOIN warehouse_goods g ON g.id=i.warehouse_goods_id WHERE i.purchase_order_id=? ORDER BY i.id",id);
+        List<Map<String,Object>> lines=db.queryForList("SELECT i.id,i.warehouse_goods_id goodsId,g.goods_code goodsCode,g.goods_name goodsName,g.specification,g.unit,i.ordered_qty orderedQty,i.confirmed_qty confirmedQty,i.received_qty receivedQty,i.unit_price suggestedPrice,i.total_amount totalAmount FROM purchase_order_items i JOIN warehouse_goods g ON g.id=i.warehouse_goods_id WHERE i.purchase_order_id=? ORDER BY i.id",id);
         if(lines.isEmpty())throw new IllegalArgumentException("不是仓库货品采购单");
         result.put("items",lines);return ApiResponse.ok(result);
     }
@@ -206,7 +206,7 @@ public class GoodsProcurementController {
     @GetMapping("/stock")
     public ApiResponse<Map<String,Object>> stock(@RequestParam(required=false) Long warehouseId,@RequestParam(required=false) Long goodsId,@AuthenticationPrincipal AuthUser user) {
         view(user);String where=" WHERE 1=1";List<Object> args=new ArrayList<>();if(warehouseId!=null){where+=" AND b.warehouse_id=?";args.add(warehouseId);}if(goodsId!=null){where+=" AND b.warehouse_goods_id=?";args.add(goodsId);}
-        return ApiResponse.ok(Map.of("items",db.queryForList("SELECT b.warehouse_id warehouseId,w.warehouse_code warehouseCode,b.warehouse_goods_id goodsId,g.goods_code goodsCode,g.goods_name goodsName,b.location_id locationId,l.location_code locationCode,l.location_type locationType,b.available_qty physicalQty,CASE WHEN l.status='ACTIVE' AND l.location_type IN ('STORAGE','PRIMARY_PICK','TEMPORARY') THEN b.available_qty ELSE 0 END availableQty,b.pending_putaway_qty pendingPutawayQty,c.average_unit_cost averageUnitCost,c.total_cost warehouseTotalCost FROM warehouse_goods_location_balances b JOIN warehouses w ON w.id=b.warehouse_id JOIN warehouse_goods g ON g.id=b.warehouse_goods_id LEFT JOIN warehouse_locations l ON l.id=b.location_id LEFT JOIN warehouse_goods_costs c ON c.warehouse_id=b.warehouse_id AND c.warehouse_goods_id=b.warehouse_goods_id"+where+" ORDER BY b.id DESC LIMIT 500",args.toArray())));
+        return ApiResponse.ok(Map.of("items",db.queryForList("SELECT b.warehouse_id warehouseId,w.warehouse_code warehouseCode,b.warehouse_goods_id goodsId,g.goods_code goodsCode,g.goods_name goodsName,g.specification,b.location_id locationId,l.location_code locationCode,l.location_type locationType,b.available_qty physicalQty,CASE WHEN l.status='ACTIVE' AND l.location_type IN ('STORAGE','PRIMARY_PICK','TEMPORARY') THEN b.available_qty ELSE 0 END availableQty,b.pending_putaway_qty pendingPutawayQty,c.average_unit_cost averageUnitCost,c.total_cost warehouseTotalCost FROM warehouse_goods_location_balances b JOIN warehouses w ON w.id=b.warehouse_id JOIN warehouse_goods g ON g.id=b.warehouse_goods_id LEFT JOIN warehouse_locations l ON l.id=b.location_id LEFT JOIN warehouse_goods_costs c ON c.warehouse_id=b.warehouse_id AND c.warehouse_goods_id=b.warehouse_goods_id"+where+" ORDER BY b.id DESC LIMIT 500",args.toArray())));
     }
 
     @GetMapping("/flows")
