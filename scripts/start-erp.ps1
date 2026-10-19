@@ -229,6 +229,26 @@ function Start-LocalObjectStorage {
     if ($LASTEXITCODE -ne 0) { throw 'Docker 图片存储服务启动失败。' }
 }
 
+function Start-LocalRedis {
+    if (-not (Get-Command 'docker' -ErrorAction SilentlyContinue)) {
+        throw 'Redis 未运行，且未找到 Docker。请安装并启动 Docker Desktop。'
+    }
+    & docker info --format '{{.ServerVersion}}' 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Docker Desktop 引擎未运行，无法启动 Redis。' }
+
+    $existing = (& docker ps -a --filter 'name=^/lue-erp-redis$' --format '{{.Names}}' 2>$null | Out-String).Trim()
+    if ($existing -eq 'lue-erp-redis') {
+        & docker start lue-erp-redis 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw '无法启动现有 Redis 容器。' }
+        return
+    }
+    if (-not (Test-Path -LiteralPath $DeployEnvFile)) {
+        throw 'Redis 未运行，且未找到 deploy\.env。请先创建本机部署配置。'
+    }
+    & docker compose --env-file $DeployEnvFile -f $ComposeFile up -d redis
+    if ($LASTEXITCODE -ne 0) { throw 'Docker Redis 服务启动失败。' }
+}
+
 function Get-LanAddresses {
     try {
         return [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
@@ -263,6 +283,24 @@ try {
     }
     Write-Host "MySQL 已连接：$($database.Host):$($database.Port)"
 
+    $redisHost = Get-Setting $backendEnv 'LUE_REDIS_HOST' 'localhost'
+    $redisPortText = Get-Setting $backendEnv 'LUE_REDIS_PORT' '6379'
+    $redisPort = 0
+    if (-not [int]::TryParse($redisPortText, [ref]$redisPort) -or $redisPort -lt 1 -or $redisPort -gt 65535) {
+        throw 'backend\.env 中的 LUE_REDIS_PORT 不是有效端口。'
+    }
+    if (-not (Test-TcpPort $redisHost $redisPort)) {
+        if (-not (Test-LocalHostName $redisHost)) { throw "远程 Redis 无法连接：${redisHost}:$redisPort" }
+        Write-Host '本机 Redis 未运行，正在通过 Docker 启动……'
+        Start-LocalRedis
+        $redisDeadline = (Get-Date).AddSeconds(60)
+        while ((Get-Date) -lt $redisDeadline -and -not (Test-TcpPort $redisHost $redisPort)) {
+            Start-Sleep -Seconds 2
+        }
+        if (-not (Test-TcpPort $redisHost $redisPort)) { throw "Redis 启动后仍无法连接：${redisHost}:$redisPort" }
+    }
+    Write-Host "Redis 已连接：${redisHost}:$redisPort"
+
     $storageType = (Get-Setting $backendEnv 'LUE_IMAGE_STORAGE_TYPE' 'none').ToLowerInvariant()
     if ($storageType -eq 'minio') {
         $storageEndpoint = Get-Setting $backendEnv 'LUE_MINIO_ENDPOINT' 'http://127.0.0.1:9000'
@@ -284,8 +322,8 @@ try {
             Start-LocalObjectStorage
         }
         $storageHealthUrls = @(
-            $storageEndpoint.TrimEnd('/') + '/health/ready',
-            $storageEndpoint.TrimEnd('/') + '/minio/health/ready'
+            ($storageEndpoint.TrimEnd('/') + '/health/ready')
+            ($storageEndpoint.TrimEnd('/') + '/minio/health/ready')
         )
         Write-Host '等待图片存储完成初始化……'
         if (-not (Wait-AnyHttp $storageHealthUrls 240 ($storageUri.Scheme -eq 'https'))) {
@@ -301,15 +339,12 @@ try {
 
     $mavenRepo = Join-Path $Root '.m2\repository'
     $backendCommand = if (Test-Path -LiteralPath $mavenRepo) {
-        'mvn -Dmaven.repo.local="' + $mavenRepo + '" spring-boot:run'
-    } else { 'mvn spring-boot:run' }
+        'mvn --offline -Dmaven.repo.local="' + $mavenRepo + '" spring-boot:run'
+    } else { 'mvn --offline spring-boot:run' }
 
     $backendUrl = 'http://localhost:8080/actuator/health'
-    $certificateKey = Join-Path $Frontend '.mobile-https\server.key'
-    $certificateFile = Join-Path $Frontend '.mobile-https\server.crt'
-    $frontendHttps = (Test-Path $certificateKey) -and (Test-Path $certificateFile)
-    $frontendCommand = if ($frontendHttps) { 'npm run dev:https' } else { 'npm run dev' }
-    $frontendUrl = if ($frontendHttps) { 'https://localhost:5173/' } else { 'http://localhost:5173/' }
+    $frontendCommand = 'npm run dev'
+    $frontendUrl = 'http://localhost:5173/'
     $backendState = Join-Path $RuntimeDir 'backend.json'
     $frontendState = Join-Path $RuntimeDir 'frontend.json'
 
@@ -324,23 +359,22 @@ try {
         $lastError = Get-ChildItem -LiteralPath $LogDir -Filter 'backend-*-error.log' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
         $hint = if ($lastError) { " 后端错误日志：$($lastError.FullName)" } else { '' }
-        throw "后端在 2 分钟内未通过健康检查。请确认数据库配置。$hint"
+        throw "后端在 2 分钟内未通过健康检查。请查看日志并确认 MySQL、Redis 和后端配置。$hint"
     }
 
     if (-not (Test-TcpPort '127.0.0.1' 5173)) {
         Start-ServiceProcess 'frontend' $Frontend $frontendCommand $frontendState
-    } elseif (-not (Test-Http $frontendUrl $frontendHttps)) {
+    } elseif (-not (Test-Http $frontendUrl)) {
         throw '5173 端口已被占用，但前端页面没有响应。请关闭占用该端口的程序后重试。'
     } else { Write-Host '前端已在运行，跳过启动。' }
 
-    if (-not (Wait-Http $frontendUrl 45 $frontendHttps)) {
+    if (-not (Wait-Http $frontendUrl 45)) {
         throw '前端在 45 秒内没有响应，请查看 logs 目录中的 frontend 日志。'
     }
 
     Write-Host "系统已就绪：$frontendUrl" -ForegroundColor Green
     foreach ($address in Get-LanAddresses) {
-        $scheme = if ($frontendHttps) { 'https' } else { 'http' }
-        Write-Host "局域网访问：${scheme}://${address}:5173/" -ForegroundColor Green
+        Write-Host "局域网访问：http://${address}:5173/" -ForegroundColor Green
     }
     try { Start-Process $frontendUrl } catch { Write-Warning "无法自动打开浏览器：$($_.Exception.Message)" }
     Write-Host "启动完成。需要停止系统时，双击根目录中的 一键停止ERP.bat。日志保存在：$LogDir" -ForegroundColor Cyan

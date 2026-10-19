@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    allowedHosts: ['erp.lue.asia'],
+    allowedHosts: ['erp.lue.asia', '5f90fa3c6bfc.eicp.fun'],
     https: mode === 'mobile-https' ? https : undefined,
     proxy: {
       '/api': {
