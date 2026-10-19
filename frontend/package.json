@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
+    "dev:https": "vite --config vite.config.ts --host 0.0.0.0 --mode mobile-https",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview --config vite.config.ts --host 0.0.0.0"
   },

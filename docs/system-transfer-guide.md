@@ -8,7 +8,7 @@ Git 仓库保存源代码、项目文档、模板和已提交的测试导入文�
 
 本机 `.env`、构建目录、依赖目录、日志以及安装说明中包含的账号信息不进入仓库。另一台电脑需要从 `.env.example` 复制自己的配置文件并自行填写。
 
-需要区分测试导入文件和数据库：仓库里的 Excel 测试文件会同步，但每台电脑 Docker 中的 MySQL、Redis 和 MinIO 数据各自独立。Excel 文件对应的导入批次、数据库业务记录、用户密码等不会因为 Git 同步而迁移。如需复制数据库，请使用 MySQL Workbench 导出/导入数据库，或采用经确认的数据库备份流程；不要把含真实信息的数据库备份提交到 GitHub。
+需要区分测试导入文件和数据库：仓库里的 Excel 测试文件会同步，但每台电脑 Docker 中的 MySQL、Redis 和对象存储数据各自独立。Excel 文件对应的导入批次、数据库业务记录、用户密码和图片文件等不会因为 Git 同步而迁移。如需复制数据库，请使用 MySQL Workbench 导出/导入数据库，或采用经确认的数据库备份流程；不要把含真实信息的数据库备份提交到 GitHub。
 
 ## 2. 首台电脑：首次上传
 
@@ -68,7 +68,7 @@ git add -f backend/data/imports/2026-10-15/example.xlsx
 - JDK 17 或更高版本
 - Maven 3.9 或更高版本
 - Node.js 20 或更高版本，以及 npm 10 或更高版本
-- Docker Desktop（需要在本机运行 MySQL、Redis、MinIO 时）
+- Docker Desktop（需要在本机运行 MySQL、Redis、对象存储时）
 
 项目内的 `app` 目录也包含 Docker Desktop、VS Code 和肥猫云安装程序。这些安装包较大，已由 Git LFS 跟踪。
 

@@ -7,12 +7,13 @@ const keyPath=resolve(process.cwd(),'.mobile-https/server.key')
 const certPath=resolve(process.cwd(),'.mobile-https/server.crt')
 const https=existsSync(keyPath)&&existsSync(certPath)?{key:readFileSync(keyPath),cert:readFileSync(certPath)}:undefined
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   server: {
     host: '0.0.0.0',
     port: 5173,
-    https,
+    allowedHosts: ['erp.lue.asia'],
+    https: mode === 'mobile-https' ? https : undefined,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
@@ -20,4 +21,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))

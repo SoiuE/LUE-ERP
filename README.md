@@ -19,13 +19,13 @@ LUE ERP/
 - Maven 3.9+
 - Node.js 20+
 - npm 10+
-- Docker Desktop 或 Docker Engine（仅在本机启动 MySQL、Redis、MinIO 时需要）
+- Docker Desktop 或 Docker Engine（仅在本机启动 MySQL、Redis、对象存储时需要）
 
 ## 开发与正式部署环境
 
-当前开发可以在目标局域网之外进行，无需连接最终部署网络。前后端可在开发电脑分别启动；Docker 仅在需要本机启动 MySQL、Redis、MinIO 或验证 Compose 时需要。
+当前开发可以在目标局域网之外进行，无需连接最终部署网络。前后端可在开发电脑分别启动；Docker 仅在需要本机启动 MySQL、Redis、对象存储或验证 Compose 时需要。
 
-系统计划部署到企业局域网内的服务器，员工通过浏览器访问该服务器的局域网 IP 或内部 DNS 名称。正式部署时再按现场网络配置访问地址和防火墙，只开放 Web 访问所需端口；数据库、Redis、MinIO 不应直接对员工客户端开放。请勿把正式服务器地址或真实密码写入代码。
+系统计划部署到企业局域网内的服务器，员工通过浏览器访问该服务器的局域网 IP 或内部 DNS 名称。正式部署时再按现场网络配置访问地址和防火墙，只开放 Web 访问所需端口；数据库、Redis、对象存储不应直接对员工客户端开放。请勿把正式服务器地址或真实密码写入代码。
 
 ## 启动基础设施
 
@@ -35,7 +35,7 @@ LUE ERP/
 Copy-Item deploy\.env.example deploy\.env
 ```
 
-启动 MySQL、Redis、MinIO：
+启动 MySQL、Redis 和 S3 兼容对象存储：
 
 ```powershell
 docker compose --env-file deploy\.env -f deploy\docker-compose.yml up -d
@@ -45,8 +45,8 @@ docker compose --env-file deploy\.env -f deploy\docker-compose.yml up -d
 
 - MySQL: `3306`
 - Redis: `6379`
-- MinIO API: `9000`
-- MinIO Console: `9001`
+- 对象存储 API: `9000`
+- 对象存储控制台: `9001`
 
 ## 启动后端
 
@@ -94,7 +94,7 @@ http://localhost:5173
 
 ### Windows 一键启动
 
-完成首次环境配置（JDK、Maven、Node.js/npm、本机 MySQL、`backend/.env` 和 `frontend/node_modules`）后，可双击项目根目录的 `一键启动ERP.bat`。脚本会检查 MySQL 与必要依赖，后台启动尚未运行的前后端，等待健康检查通过后打开浏览器；运行日志保存在 `logs/`。关闭系统时双击 `一键停止ERP.bat`。脚本不会修改数据库或覆盖本地环境配置；如果端口已被其他程序占用，会提示处理。
+完成首次环境配置（JDK、Maven、Node.js/npm、本机 MySQL、`backend/.env` 和 `frontend/node_modules`）后，可双击项目根目录的 `一键启动ERP.bat`。脚本会检查 MySQL 与必要依赖；启用图片存储时还会检查 Docker、启动本机对象存储并准备图片 bucket。之后脚本后台启动尚未运行的前后端，等待健康检查通过后打开浏览器；运行日志保存在 `logs/`。关闭系统时双击 `一键停止ERP.bat`。脚本不会修改数据库或覆盖本地环境配置；如果端口已被其他程序占用，会提示处理。
 
 Windows 本地运行及暂停步骤见[程序运行命令操作文档](docs/程序运行命令操作文档.md)和[程序暂停操作文档](docs/程序暂停操作文档.md)。
 
