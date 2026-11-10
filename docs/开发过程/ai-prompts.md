@@ -12,7 +12,7 @@
 
 通用要求：
 
-- 每次开发前必须先阅读 `docs/requirements.md` 和 `docs/ai-development-steps.md`。
+- 每次开发前必须先阅读 `docs/需求/requirements.md` 和 `docs/开发过程/ai-development-steps.md`。
 - 本次只开发提示词指定范围，不开发其他模块。
 - 不接入速卖通官方 API。
 - 第一版以 Excel 导入为主。
@@ -26,8 +26,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 0：工程初始化】，不要开发任何业务模块。
 
@@ -69,8 +69,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 1：登录、用户、角色、权限和基础后台布局】。
 
@@ -113,8 +113,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 2：店铺、SKU、供应商、包材主数据】。
 
@@ -157,8 +157,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 3：店铺 SKU 映射】。
 
@@ -194,8 +194,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 4：Excel 导入中心基础框架】。
 
@@ -245,8 +245,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 5：订单数据导入、订单模式、SKU 未匹配异常】。
 
@@ -294,8 +294,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 6：采购、库存、包材流水核心链路】。
 
@@ -350,7 +350,7 @@
 ### 阶段 6 采购单字段与异常处理补充指令-已完成
 
 ```text
-请基于 docs/requirements.md 和 docs/ai-development-steps.md，在现有采购管理功能上补充以下需求：
+请基于 docs/需求/requirements.md 和 docs/开发过程/ai-development-steps.md，在现有采购管理功能上补充以下需求：
 
 - 采购单增加“快递单号”和“订单编号”两个选填字段，创建采购单时可填写，详情页可查看。
 - 采购单列表可按采购单号、快递单号、订单编号和供应商搜索。
@@ -376,8 +376,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 7：手机端仓库操作第一版】。
 
@@ -431,8 +431,8 @@
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 8：SKU 利润报表】。
 
@@ -485,8 +485,8 @@ SKU 毛利率 = SKU 毛利 / 销售收入
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 9：图片库和数据采集任务中心】。
 
@@ -534,8 +534,8 @@ SKU 毛利率 = SKU 毛利 / 销售收入
 
 ```text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
 
 本次只开发【阶段 10：以图搜商品占位】，不要实现真正的图像相似度算法。
 
@@ -571,7 +571,7 @@ SKU 毛利率 = SKU 毛利 / 销售收入
 每完成一个阶段后，可以复制下面这段给 AI：
 
 ```text
-请根据 docs/requirements.md 和 docs/ai-development-steps.md，对刚完成的模块做一次自查。
+请根据 docs/需求/requirements.md 和 docs/开发过程/ai-development-steps.md，对刚完成的模块做一次自查。
 
 只做检查，先不要改代码。
 
@@ -617,13 +617,13 @@ SKU 毛利率 = SKU 毛利 / 销售收入
 
 ## 【本次新增】阶段 15：速卖通组包/预约表格传输与本地发货履约
 
-以下为新增的可复制开发指令，不修改或替代本文件原有阶段提示词。开发前必须以最新的 `docs/requirements.md` 和 `docs/ai-development-steps.md` 为准。
+以下为新增的可复制开发指令，不修改或替代本文件原有阶段提示词。开发前必须以最新的 `docs/需求/requirements.md` 和 `docs/开发过程/ai-development-steps.md` 为准。
 
 ````text
 请先阅读：
-- docs/requirements.md
-- docs/ai-development-steps.md
-- docs/ai-prompts.md 中本新增的阶段 15 指令
+- docs/需求/requirements.md
+- docs/开发过程/ai-development-steps.md
+- docs/开发过程/ai-prompts.md 中本新增的阶段 15 指令
 
 本次只开发【阶段 15：速卖通组包/预约表格传输与本地发货履约】。
 

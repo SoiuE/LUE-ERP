@@ -646,7 +646,7 @@ P2 后续增强：
 后续让 AI 开发时，建议按以下格式下达任务：
 
 ```text
-请基于 docs/requirements.md 和 docs/ai-development-steps.md 开发【模块名称】。
+请基于 docs/需求/requirements.md 和 docs/开发过程/ai-development-steps.md 开发【模块名称】。
 
 目标：
 - ...

@@ -2,8 +2,8 @@
 
 日期：2026-10-17
 验收范围：图片资产模型、存储抽象、资产 API、授权与审计
-需求基线：`docs/image-function-requirements.md`、`docs/ai-image-function-development-instructions.md`
-阶段 0 盘点：`docs/image-function-stage0-inventory.md`
+需求基线：`docs/需求/image-function-requirements.md`、`docs/开发过程/ai-image-function-development-instructions.md`
+阶段 0 盘点：`docs/开发过程/image-function-stage0-inventory.md`
 
 ## 结论
 

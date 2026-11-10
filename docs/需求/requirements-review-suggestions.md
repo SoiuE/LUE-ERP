@@ -4,7 +4,7 @@
 
 ## 已合并内容
 
-`docs/requirements.md` 已升级为 v0.4，并合并了 `docs/requirements-V2.md` 的主要修订：
+`docs/需求/requirements.md` 已升级为 v0.4，并合并了 `docs/需求/requirements-V2.md` 的主要修订：
 
 - 人民币单币种。
 - 产品包装/发货打包材料双包材分类。

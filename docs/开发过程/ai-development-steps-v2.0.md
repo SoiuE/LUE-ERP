@@ -2,8 +2,8 @@
 
 版本：V2.0 草案  
 日期：2026-10-15  
-需求基线：docs/requirements-v2.0.md  
-V1 历史文档：docs/requirements.md、docs/ai-development-steps.md、docs/ai-prompts.md
+需求基线：docs/需求/requirements-v2.0.md
+V1 历史文档：docs/需求/requirements.md、docs/开发过程/ai-development-steps.md、docs/开发过程/ai-prompts.md
 
 ## 1. 开发原则
 

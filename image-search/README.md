@@ -20,13 +20,14 @@ Qdrant 有成熟的持久化、过滤和快照能力，但需要新增一个受�
 
 ## 资源和部署
 
-新电脑迁移、完整环境变量、Compose profile 启动、Git LFS 大文件处理，以及网络卡顿时的镜像和模型离线搬运流程，见[双 Windows 电脑迁移与同步指南](../docs/system-transfer-guide.md)。
+新电脑迁移、完整环境变量、Compose profile 启动、Git LFS 大文件处理，以及网络卡顿时的镜像和模型离线搬运流程，见[双 Windows 电脑迁移与同步指南](../docs/部署/本地电脑/system-transfer-guide.md)。
 
 - 首次启动需要访问模型仓库并下载约 350 MiB 权重；CPU 版 PyTorch 镜像和依赖还需要数 GiB 磁盘空间。
 - 建议至少 2 个 CPU 核、4 GiB 可用内存；并发量增大后再根据实测调整。
 - `/models` 保存模型缓存，`/data` 保存 SQLite 索引，`/backups` 保存在线备份。
 - 必须设置随机且足够长的 `LUE_IMAGE_SEARCH_INTERNAL_TOKEN`，并让 Spring 后端使用相同值。
-- 当前 Compose 把端口仅绑定到 `127.0.0.1:8090`，用于宿主机运行的 Spring 后端。后端容器化后应去掉宿主端口，在 Compose 私有网络中使用 `http://image-search:8090`。
+- 开发 Compose 把端口仅绑定到 `127.0.0.1:8090`，供宿主机后端使用。全容器 Compose 使用私有网络地址 `http://image-search:8090`，无需发布搜索服务端口。
+- Dockerfile 优先使用 `wheelhouse/` 中完整的 CPU 版 PyTorch wheel；若只有 Git LFS 指针，则从 PyTorch 官方 CPU 软件源下载。网络较慢时可先通过 Git LFS 或受控介质准备 wheel。
 - 无外网部署应在发布环境预下载并随受控模型缓存卷分发权重；模型及权重名称保持不变，避免索引版本漂移。
 
 ```powershell

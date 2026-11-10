@@ -4,7 +4,7 @@
 
 ## 基线与边界
 
-依据 `docs/requirements-v2.0.md`、`docs/ai-development-steps-v2.0.md`、本聊天阶段 0 的代码调查及现有迁移实现。仓库中未发现另行保存的阶段 0 完整报告，不将提示词中的“已发送”视为数据库验收证据。
+依据 `docs/需求/requirements-v2.0.md`、`docs/开发过程/ai-development-steps-v2.0.md`、本聊天阶段 0 的代码调查及现有迁移实现。仓库中未发现另行保存的阶段 0 完整报告，不将提示词中的“已发送”视为数据库验收证据。
 
 现有 `skus` 仍用于 V1 采购、库存、履约和利润；`shop_sku_mappings.sku_id` 继续指向 `skus.id`。本阶段新增独立货品与组成版本，未自动转换旧 SKU、推断货品关系或变更既有业务计算。
 

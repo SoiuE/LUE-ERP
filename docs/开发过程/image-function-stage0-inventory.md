@@ -1,7 +1,7 @@
 # 图片功能阶段 0：只读盘点与实施切分
 
 盘点日期：2026-10-17
-依据：`docs/image-function-requirements.md` 与当前仓库代码、Flyway 迁移、部署配置和测试源码。
+依据：`docs/需求/image-function-requirements.md` 与当前仓库代码、Flyway 迁移、部署配置和测试源码。
 
 ## 范围与限制
 

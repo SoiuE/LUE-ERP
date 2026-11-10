@@ -28,6 +28,8 @@ services:
       LUE_ADMIN_USERNAME: ${LUE_ADMIN_USERNAME:-admin}
       LUE_ADMIN_PASSWORD: ${LUE_ADMIN_PASSWORD:?Set LUE_ADMIN_PASSWORD in deploy/.env}
       LUE_FLYWAY_ENABLED: ${LUE_FLYWAY_ENABLED:-false}
+      LUE_IMAGE_SEARCH_URL: http://image-search:8090
+      LUE_IMAGE_SEARCH_INTERNAL_TOKEN: ${LUE_IMAGE_SEARCH_INTERNAL_TOKEN:-}
     volumes:
       - backend_data:/app/data
 
@@ -42,5 +44,32 @@ services:
     ports:
       - "${LUE_WEB_BIND:-127.0.0.1}:${LUE_WEB_PORT:-8081}:80"
 
+  image-search:
+    profiles: ["image-search"]
+    image: lue-erp-image-search:local
+    build:
+      context: ../image-search
+      target: runtime
+    restart: unless-stopped
+    environment:
+      IMAGE_SEARCH_INTERNAL_TOKEN: ${LUE_IMAGE_SEARCH_INTERNAL_TOKEN:-}
+      IMAGE_SEARCH_MODEL: ${LUE_IMAGE_SEARCH_MODEL:-ViT-B-32}
+      IMAGE_SEARCH_PRETRAINED: ${LUE_IMAGE_SEARCH_PRETRAINED:-laion2b_s34b_b79k}
+      IMAGE_SEARCH_INDEX_PATH: /data/image-index.sqlite
+      IMAGE_SEARCH_BACKUP_DIR: /backups
+    volumes:
+      - image_search_data:/data
+      - image_search_models:/models
+      - image_search_backups:/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
 volumes:
   backend_data:
+  image_search_data:
+  image_search_models:
+  image_search_backups:

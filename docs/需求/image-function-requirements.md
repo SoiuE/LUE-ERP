@@ -3,7 +3,7 @@
 版本：v1.0
 日期：2026-10-17
 适用范围：现有 LUE ERP 增量开发
-需求基线：当前系统架构、`docs/requirements.md`、`docs/requirements-v2.0.md`、`docs/ai-development-steps.md`、`docs/ai-development-steps-v2.0.md`
+需求基线：当前系统架构、`docs/需求/requirements.md`、`docs/需求/requirements-v2.0.md`、`docs/开发过程/ai-development-steps.md`、`docs/开发过程/ai-development-steps-v2.0.md`
 
 ## 1. 背景与目标
 

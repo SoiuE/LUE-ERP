@@ -6,7 +6,7 @@
 
 ## 0. 本版合并说明
 
-本文件合并了 `docs/requirements-V2.md` 与原始 `docs/requirements.md`，并补充移动端仓库操作需求。
+本文件合并了 `docs/需求/requirements-V2.md` 与原始 `docs/需求/requirements.md`，并补充移动端仓库操作需求。
 
 本版关键变更：
 

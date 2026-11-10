@@ -4,7 +4,7 @@
 
 ## 1. 同步内容与本机内容
 
-Git 仓库保存源代码、项目文档、模板和已提交的测试导入文件。超过 GitHub 普通文件大小限制的安装包、Python wheel 或其他离线文件必须通过 Git LFS 保存，或者使用受控的离线介质单独传输。克隆前先确认仓库是否使用了 Git LFS；如果使用，新电脑必须安装 Git LFS 才能取得实际文件。
+Git 仓库保存源代码、项目文档和模板；运行时导入文件已从仓库清理。超过 GitHub 普通文件大小限制的安装包、Python wheel 或其他离线文件必须通过 Git LFS 保存，或者使用受控的离线介质单独传输。克隆前先确认仓库是否使用了 Git LFS；如果使用，新电脑必须安装 Git LFS 才能取得实际文件。
 
 以图搜图镜像当前会从 `image-search/wheelhouse/` 读取本地 CPU 版 PyTorch wheel。该文件约 175 MiB，不能作为普通 Git 文件推送到 GitHub。若决定通过仓库传输，应在旧电脑上执行下面的命令并提交生成的 `.gitattributes`；若不通过 Git LFS，则必须把整个 `image-search/wheelhouse/` 目录用移动硬盘等受控方式复制到新电脑的相同路径。
 
@@ -20,7 +20,7 @@ git push
 
 本机 `.env`、构建目录、依赖目录、日志以及安装说明中包含的账号信息不进入仓库。另一台电脑需要从 `.env.example` 复制自己的配置文件并自行填写。
 
-需要区分测试导入文件和数据库：仓库里的 Excel 测试文件会同步，但每台电脑 Docker 中的 MySQL、Redis 和对象存储数据各自独立。Excel 文件对应的导入批次、数据库业务记录、用户密码和图片文件等不会因为 Git 同步而迁移。如需复制数据库，请使用 MySQL Workbench 导出/导入数据库，或采用经确认的数据库备份流程；不要把含真实信息的数据库备份提交到 GitHub。
+每台电脑 Docker 中的 MySQL、Redis 和对象存储数据各自独立。导入批次、数据库业务记录、用户密码和图片文件等不会因为 Git 同步而迁移。如需复制数据库，请使用 MySQL Workbench 导出/导入数据库，或采用经确认的数据库备份流程；不要把含真实信息的数据库备份提交到 GitHub。
 
 ## 2. 首台电脑：首次上传
 
@@ -60,15 +60,9 @@ git status --short
 git check-ignore backend\.env deploy\.env
 ```
 
-本项目的测试导入文件已按用户确认上传。以后如需提交新的测试文件，提交前仍要核对内容，确认不含真实客户、凭证或其他不应共享的信息。
+运行时导入文件已从仓库移除。以后如需共享测试数据，优先放在独立的测试数据目录并核对内容，确认不含真实客户、凭证或其他不应共享的信息。
 
-注意：`.gitignore` 忽略整个 `backend/data/` 运行数据目录。若以后明确需要把新的测试导入文件放入仓库，使用 `git add -f` 指定文件，例如：
-
-```powershell
-git add -f backend/data/imports/2026-10-15/example.xlsx
-```
-
-只添加确认过的测试文件，不要用 `git add -f backend/data/` 整体加入运行目录。
+注意：`.gitignore` 忽略整个 `backend/data/` 运行数据目录。不要使用 `git add -f backend/data/` 把运行数据重新加入仓库。
 
 ## 3. 第二台电脑：克隆并启动
 
@@ -103,7 +97,7 @@ git lfs ls-files
 Get-ChildItem image-search\wheelhouse\*.whl | Select-Object Name,Length
 ```
 
-当前 Dockerfile 需要 `image-search/wheelhouse/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl`。如果该文件不存在、文件大小异常，或内容仍是 LFS 指针，图片搜索镜像将无法构建。
+当前 Dockerfile 优先使用 `image-search/wheelhouse/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl`。如果文件仍是 LFS 指针，构建会尝试从 PyTorch 官方 CPU 软件源下载；网络不稳定时建议先取得完整 wheel。
 
 ### 3.3 创建本机环境配置
 
@@ -300,7 +294,7 @@ docker compose -p lue-erp --env-file deploy\.env -f deploy\docker-compose.yml --
 常见情况及处理方式如下：
 
 1. 如果失败在拉取 `python:3.11-slim`，问题发生在 Docker Hub。先在 Docker Desktop 的代理设置中填写实际可用的 HTTP/HTTPS 代理，重启 Docker Desktop，再单独执行 `docker pull python:3.11-slim`。公司网络使用镜像加速器时，应在 Docker Desktop 的 Docker Engine 配置中填写由网络管理员提供的可信 registry mirror。
-2. 如果失败在安装 `torchvision` 或 `requirements.txt`，问题发生在 pip 下载。当前 Dockerfile 已将超时提高到 300 秒并重试 10 次，同时从 `image-search/wheelhouse/` 安装最大的 PyTorch wheel。先确认本地 wheel 完整，再重新构建；Docker 会复用成功的缓存层。PowerShell 中配置的 `HTTP_PROXY` 不一定自动传入 Docker 构建环境，优先配置 Docker Desktop 自身的代理。
+2. 如果失败在安装 PyTorch、`torchvision` 或 `requirements.txt`，问题发生在 pip 下载。当前 Dockerfile 已将超时提高到 300 秒并重试 10 次；完整的本地 wheel 可减少 PyTorch 下载依赖。先确认 wheel 是否完整，再重新构建；Docker 会复用成功的缓存层。PowerShell 中配置的 `HTTP_PROXY` 不一定自动传入 Docker 构建环境，优先配置 Docker Desktop 自身的代理。
 3. 如果日志出现证书校验失败，不要使用关闭 TLS 校验的方式绕过。应把公司代理的根证书正确配置到 Docker Desktop/容器信任链，或改用不拦截 TLS 的网络。
 4. 如果镜像已构建成功，但 `/health` 长时间返回 503，查看 `docker compose ... logs image-search`。这通常是首次启动下载模型权重失败，与镜像构建失败是两件事。恢复网络后重启 `image-search`，它会继续使用模型缓存卷；模型下载完成前不要执行全量索引。
 
@@ -352,6 +346,6 @@ git branch -vv
 - `backend\.env` 的数据库连接配置和本机 Docker MySQL 账号一致。
 - 访问前端 `http://localhost:5173`，后端健康检查 `http://localhost:8080/api/health`。
 - 已理解 Git 同步代码和文件，不会自动同步 Docker 数据库内容。
-- 已确认 `image-search/wheelhouse/` 中的 PyTorch wheel 存在且完整，或已通过受控介质复制。
+- 已确认图片搜索构建能访问 PyTorch 官方 CPU 软件源，或 `image-search/wheelhouse/` 中已有完整 wheel。
 - `deploy\.env` 与 `backend\.env` 使用相同的图片搜索内部令牌。
 - `image-search` 健康接口返回 `ready: true`，模型卷、索引卷和备份卷已纳入迁移或重建计划。

@@ -2,9 +2,9 @@
 
 版本：V2.0  
 日期：2026-10-15  
-需求基线：docs/requirements-v2.0.md  
-开发规范：docs/ai-development-steps-v2.0.md  
-V1 历史基线：docs/requirements.md、docs/ai-development-steps.md、docs/ai-prompts.md
+需求基线：docs/需求/requirements-v2.0.md
+开发规范：docs/开发过程/ai-development-steps-v2.0.md
+V1 历史基线：docs/需求/requirements.md、docs/开发过程/ai-development-steps.md、docs/开发过程/ai-prompts.md
 
 ## 使用方法
 
@@ -34,7 +34,7 @@ V1 历史基线：docs/requirements.md、docs/ai-development-steps.md、docs/ai-
 ## 阶段 0：只读现状盘点与迁移设计-已发送
 
 ~~~text
-请阅读 docs/requirements-v2.0.md、docs/ai-development-steps-v2.0.md、V1 的 docs/requirements.md、docs/ai-development-steps.md、docs/ai-prompts.md，并检查当前工作区代码、数据库迁移和已有业务结构。
+请阅读 docs/需求/requirements-v2.0.md、docs/开发过程/ai-development-steps-v2.0.md、V1 的 docs/需求/requirements.md、docs/开发过程/ai-development-steps.md、docs/开发过程/ai-prompts.md，并检查当前工作区代码、数据库迁移和已有业务结构。
 
 本次只做只读调查和方案设计：不要修改、创建或删除任何文件，不要执行数据库写入或迁移。
 

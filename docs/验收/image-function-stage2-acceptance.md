@@ -2,7 +2,7 @@
 
 日期：2026-10-17
 范围：PC 图片库、SKU 与仓库货品多图维护、预览、`image_url` 导入兼容
-依据：`docs/image-function-requirements.md`、`docs/image-function-stage0-inventory.md`、`docs/image-function-stage1-acceptance.md`
+依据：`docs/需求/image-function-requirements.md`、`docs/开发过程/image-function-stage0-inventory.md`、`docs/验收/image-function-stage1-acceptance.md`
 
 ## 结论
 

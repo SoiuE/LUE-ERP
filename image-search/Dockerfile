@@ -9,8 +9,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY wheelhouse/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl /tmp/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl
-RUN pip install --no-cache-dir --timeout 300 --retries 10 --index-url https://download.pytorch.org/whl/cpu /tmp/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl torchvision==0.20.1
+COPY wheelhouse/ /tmp/wheelhouse/
+RUN wheel=/tmp/wheelhouse/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl; \
+    if [ -f "$wheel" ] && [ "$(wc -c < "$wheel")" -gt 100000000 ]; then \
+      pip install --no-cache-dir --timeout 300 --retries 10 --index-url https://download.pytorch.org/whl/cpu "$wheel" torchvision==0.20.1; \
+    else \
+      pip install --no-cache-dir --timeout 300 --retries 10 --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1; \
+    fi
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --timeout 300 --retries 10 -r requirements.txt

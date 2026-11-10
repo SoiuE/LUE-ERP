@@ -6,7 +6,7 @@
 
 本阶段实现内部销售 SKU 和仓库货品的真实图片特征检索。浏览器只访问 ERP 后端；后端鉴权后调用独立 FastAPI 服务，并聚合对象资料与可用库存。搜索和“确认候选”均不写入店铺映射、组成清单、库存、单据或履约记录。
 
-采用 OpenCLIP `ViT-B-32 / laion2b_s34b_b79k`、Python 3.11 FastAPI、SQLite 持久化向量和 NumPy 精确余弦检索。Qdrant、Milvus 与当前方案的比较、容量假设、模型下载、部署、重建和备份方式见 [图片搜索服务说明](../image-search/README.md)。
+采用 OpenCLIP `ViT-B-32 / laion2b_s34b_b79k`、Python 3.11 FastAPI、SQLite 持久化向量和 NumPy 精确余弦检索。Qdrant、Milvus 与当前方案的比较、容量假设、模型下载、部署、重建和备份方式见 [图片搜索服务说明](../../image-search/README.md)。
 
 ## 已交付
 
