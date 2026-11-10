@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+08:00"]
+    ports: ["127.0.0.1:3306:3306"]
+    volumes: ["mysql_data:/var/lib/mysql"]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["redis_data:/data"]
+
+  minio:
+    image: rustfs/rustfs@sha256:9ca9559533b537d10482fe923288b676ad08f92a7069d9a17327fbae3cab688b
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: ["minio_data:/data"]
+
+  minio-init:
+    image: rustfs/rustfs@sha256:9ca9559533b537d10482fe923288b676ad08f92a7069d9a17327fbae3cab688b
+    restart: "no"
+    depends_on: [minio]
+    environment:
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      RUSTFS_BUCKET: ${MINIO_BUCKET}
+      RUSTFS_REGION: ${MINIO_REGION}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        credential="$${RUSTFS_ACCESS_KEY}:$${RUSTFS_SECRET_KEY}";
+        until curl --silent --fail http://minio:9000/health/ready >/dev/null; do sleep 2; done;
+        curl --silent --show-error --fail --output /dev/null
+        --aws-sigv4 "aws:amz:$${RUSTFS_REGION}:s3" --user "$${credential}"
+        --head "http://minio:9000/$${RUSTFS_BUCKET}" ||
+        curl --silent --show-error --fail --output /dev/null
+        --aws-sigv4 "aws:amz:$${RUSTFS_REGION}:s3" --user "$${credential}"
+        -X PUT "http://minio:9000/$${RUSTFS_BUCKET}"
+
+volumes:
+  mysql_data:
+  redis_data:
+  minio_data:

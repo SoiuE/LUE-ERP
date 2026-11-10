@@ -46,6 +46,9 @@ public class BootstrapData implements CommandLineRunner {
         permission("menu.purchases", "采购管理", "MENU", "/purchases");
         permission("menu.package-stocks", "包材库存", "MENU", "/package-stocks");
         permission("menu.mobile", "手机仓库", "MENU", "/mobile");
+        permission("menu.fulfillment", "本地履约", "MENU", "/fulfillment");
+        permission("button.fulfillment.import", "导入平台组包预约", "BUTTON", null);
+        permission("button.fulfillment.operate", "本地拣货与交接", "BUTTON", null);
         permission("menu.profits", "SKU 利润报表", "MENU", "/profits");
         permission("button.profits.import", "利润数据导入", "BUTTON", null);
         permission("button.profits.recalculate", "利润手动重算", "BUTTON", null);
@@ -60,6 +63,9 @@ public class BootstrapData implements CommandLineRunner {
         grant("OPERATOR", "menu.image-search", "button.image-search.manage");
         grant("VIEWER", "menu.dashboard", "menu.profits");
         grant("WAREHOUSE", "menu.mobile");
+        grant("ADMIN", "menu.fulfillment", "button.fulfillment.import", "button.fulfillment.operate");
+        grant("OPERATOR", "menu.fulfillment", "button.fulfillment.import", "button.fulfillment.operate");
+        grant("WAREHOUSE", "menu.fulfillment", "button.fulfillment.operate");
         grant("ADMIN", "warehouse.locations.view", "button.locations.manage", "warehouse.location_stock.view");
         grant("OPERATOR", "warehouse.locations.view", "button.locations.manage", "warehouse.location_stock.view");
         grant("WAREHOUSE", "warehouse.locations.view", "warehouse.location_stock.view");

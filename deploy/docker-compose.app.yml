@@ -1,0 +1,38 @@
+services:
+  backend:
+    image: lue-erp-backend:local
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on: [mysql, redis, minio]
+    environment:
+      TZ: Asia/Shanghai
+      LUE_DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      LUE_DB_USERNAME: ${MYSQL_USER}
+      LUE_DB_PASSWORD: ${MYSQL_PASSWORD}
+      LUE_REDIS_HOST: redis
+      LUE_REDIS_PORT: 6379
+      LUE_IMAGE_STORAGE_TYPE: minio
+      LUE_MINIO_ENDPOINT: http://minio:9000
+      LUE_MINIO_BUCKET: ${MINIO_BUCKET}
+      LUE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      LUE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      LUE_MINIO_REGION: ${MINIO_REGION}
+      LUE_AUTH_SECRET: ${LUE_AUTH_SECRET:?Set LUE_AUTH_SECRET in deploy/.env}
+      LUE_ADMIN_USERNAME: ${LUE_ADMIN_USERNAME:-admin}
+      LUE_ADMIN_PASSWORD: ${LUE_ADMIN_PASSWORD:?Set LUE_ADMIN_PASSWORD in deploy/.env}
+      LUE_FLYWAY_ENABLED: ${LUE_FLYWAY_ENABLED:-false}
+    volumes:
+      - backend_data:/app/data
+
+  frontend:
+    image: lue-erp-frontend:local
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "127.0.0.1:8081:80"
+
+volumes:
+  backend_data:
