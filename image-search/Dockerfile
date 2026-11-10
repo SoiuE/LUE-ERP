@@ -8,9 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MKL_NUM_THREADS=2
 
 WORKDIR /app
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.5.1 torchvision==0.20.1
+
+COPY wheelhouse/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl /tmp/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl
+RUN pip install --no-cache-dir --timeout 300 --retries 10 --index-url https://download.pytorch.org/whl/cpu /tmp/torch-2.5.1+cpu-cp311-cp311-linux_x86_64.whl torchvision==0.20.1
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 300 --retries 10 -r requirements.txt
 COPY app ./app
 
 FROM base AS test

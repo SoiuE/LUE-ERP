@@ -20,6 +20,8 @@ Qdrant 有成熟的持久化、过滤和快照能力，但需要新增一个受�
 
 ## 资源和部署
 
+新电脑迁移、完整环境变量、Compose profile 启动、Git LFS 大文件处理，以及网络卡顿时的镜像和模型离线搬运流程，见[双 Windows 电脑迁移与同步指南](../docs/system-transfer-guide.md)。
+
 - 首次启动需要访问模型仓库并下载约 350 MiB 权重；CPU 版 PyTorch 镜像和依赖还需要数 GiB 磁盘空间。
 - 建议至少 2 个 CPU 核、4 GiB 可用内存；并发量增大后再根据实测调整。
 - `/models` 保存模型缓存，`/data` 保存 SQLite 索引，`/backups` 保存在线备份。

@@ -4,7 +4,13 @@ services:
     build:
       context: ../backend
     restart: unless-stopped
-    depends_on: [mysql, redis, minio]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     environment:
       TZ: Asia/Shanghai
       LUE_DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
@@ -30,9 +36,11 @@ services:
     build:
       context: ../frontend
     restart: unless-stopped
-    depends_on: [backend]
+    depends_on:
+      backend:
+        condition: service_started
     ports:
-      - "127.0.0.1:8081:80"
+      - "${LUE_WEB_BIND:-127.0.0.1}:${LUE_WEB_PORT:-8081}:80"
 
 volumes:
   backend_data:
