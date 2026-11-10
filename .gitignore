@@ -49,3 +49,6 @@ deploy/data/
 deploy/minio/
 deploy/mysql/
 deploy/redis/
+
+# Deployment image archives
+lue-erp-*.tar

@@ -1,0 +1,18 @@
+# Use only with images transferred from a trusted build machine.
+# docker save/load does not retain digest references, so the RustFS image
+# pulled by the pinned digest in docker-compose.prod.yml gets a local tag.
+services:
+  mysql:
+    pull_policy: never
+  redis:
+    pull_policy: never
+  minio:
+    image: lue-erp-rustfs:offline
+    pull_policy: never
+  minio-init:
+    image: lue-erp-rustfs:offline
+    pull_policy: never
+  backend:
+    pull_policy: never
+  frontend:
+    pull_policy: never

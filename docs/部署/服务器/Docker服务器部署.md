@@ -34,3 +34,44 @@ docker compose -p lue-erp --env-file deploy/.env -f deploy/docker-compose.prod.y
 阿里云系统安装、宝塔 Nginx 和网络配置参考 [阿里云轻量服务器部署方案](阿里云轻量服务器部署方案.md)；全容器部署以本文件的组合 Compose 命令为准。
 
 图片搜索服务已作为可选 `image-search` profile 写入应用 Compose；在 4 GiB 服务器上启用前，需要单独评估模型内存、磁盘容量和索引备份。默认启动仅覆盖 ERP 主应用及其三个基础服务。
+
+## 服务器无法访问 Docker Hub 时
+
+若 `curl -I --max-time 15 https://registry-1.docker.io/v2/` 超时，可以从能访问 Docker Hub 的 Windows Docker Desktop 下载基础镜像并通过 SSH 传输。以下命令使用已固定的 RustFS digest 下载，再给同一个镜像增加离线标签；`docker save/load` 不保留 digest 引用，所以服务器启动时必须同时加载 `deploy/docker-compose.offline.yml`。不要使用不明来源的公共镜像地址替换固定 digest。
+
+本机 PowerShell（在仓库根目录）：
+
+```powershell
+docker pull --platform linux/amd64 mysql:8.4
+docker pull --platform linux/amd64 redis:7.4-alpine
+$rustfs = 'rustfs/rustfs@sha256:9ca9559533b537d10482fe923288b676ad08f92a7069d9a17327fbae3cab688b'
+docker pull --platform linux/amd64 $rustfs
+docker tag $rustfs lue-erp-rustfs:offline
+docker save -o lue-erp-dependencies.tar mysql:8.4 redis:7.4-alpine lue-erp-rustfs:offline
+Get-FileHash .\lue-erp-dependencies.tar -Algorithm SHA256
+scp -i "$env:USERPROFILE\.ssh\lue_erp_aliyun" .\lue-erp-dependencies.tar admin@8.133.211.8:~/
+```
+
+服务器 Shell（将 IP 与登录用户替换为实际值，核对 `sha256sum` 与本机输出的哈希相同）：
+
+```bash
+sha256sum ~/lue-erp-dependencies.tar
+sudo mv ~/lue-erp-dependencies.tar /opt/lue-erp/
+sudo docker load -i /opt/lue-erp/lue-erp-dependencies.tar
+cd /opt/lue-erp
+sudo docker compose -p lue-erp --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.app.yml \
+  -f deploy/docker-compose.offline.yml config --quiet
+sudo docker compose -p lue-erp --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.app.yml \
+  -f deploy/docker-compose.offline.yml up -d --no-build --pull never
+sudo docker compose -p lue-erp --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.app.yml \
+  -f deploy/docker-compose.offline.yml ps -a
+curl -fsS http://127.0.0.1:8081/api/health
+```
+
+以后在这台服务器执行 `up`、`ps`、`logs` 时，都带上这三个 Compose 文件；否则 Compose 会重新使用 RustFS 的在线 digest 引用。镜像归档确认导入成功后可以从服务器删除以节省 50 GiB 系统盘空间；不要删除 Docker 数据卷。
